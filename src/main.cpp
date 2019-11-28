@@ -6,8 +6,8 @@
 #include <cmath>
 
 const int TRAIN_IMAGE_COUNT = 60000;
-const int TRAIN_BATCH_SIZE = 10000;
-const int PREDICT_IMAGE_COUNT = 100;
+const int TRAIN_BATCH_SIZE = 100;
+const int PREDICT_IMAGE_COUNT = 10000;
 
 cli_arguments_t cli;
 ImageSet trainImageSet;
@@ -39,61 +39,10 @@ int inspect(model_schema_t* mem, int batchIndex, int step) {
     double* keyxdw = keyxDweights + 1;
 
     if (step == 3) {
-        // layerFacade[1].read();
-        // layerFacade[2].read();
-        // layerFacade[3].read();
-        // layerFacade[4].read();
-        // layerFacade[5].read();
-        // double* y = layerFacade[2].predictTemp + TRAIN_BATCH_SIZE * 10 + TRAIN_BATCH_SIZE * 1;
-        // printMatrixlf4(y, 10, 10);
-        // printMatrixlf4(layerFacade[2].trainOutput, 10, 10);
-        // printf("b = %.8lf\n", *keyxb);
-        // printf("STEP 3\n");
-        // printMatrixlf(keyxw, 28, 28);
-        // printMatrixlf(keyxdw, 28, 28);
-        // printMatrixlf(layerFacade[3].predictInput, 10, 5);
-        // printMatrixlf(layerFacade[3].trainOutput, 10, 5);
-        // printMatrixlf(layerFacade[2].trainOutput, 10, 5);
-        // printMatrixlf6(layerFacade[2].weights, 11, 10);
-        // printMatrixlf6(layerFacade[2].dweights, 11, 10);
-        // printMatrixlf6(layerFacade[2].trainInput, 10, 20);
-        // printMatrixlf6(layerFacade[3].trainOutput, 10, 20);
-        // printMatrixlf6(layerFacade[2].trainOutput, 64, 10);
-        // printMatrixlf6(layerFacade[1].trainOutput, 10, 20);
-        // for (int i = 0; i < 10; i++) {
-        //     printMatrixlf6(layerFacade[2].weights + i * 65 + 1, 8, 8);
-        // }
-        // printMatrixlf(layerFacade[2].dweights, 11, 10);
-        // printMatrixlf8(layerFacade[3].trainOutput, 10, 20);
-        // printMatrixlf8(layerFacade[2].trainInput, 10, 20);
-        // printMatrixlf8(layerFacade[2].trainTemp, 10, 20);
-        // printMatrixlf8(layerFacade[2].trainOutput, 64, 20);
-
-        // printMatrixlf4(layerFacade[2].trainInput, 10, 20);
-        // printMatrixlf4(layerFacade[2].trainOutput, 64, 20);
-
-        // printMatrixlf4(layerFacade[1].trainInput, 64, 20);
-        // for (int i = 0; i < 2; i++) {
-        //     printf("db = %.4lf, dw = \n", *(layerFacade[1].dweights + i * 785));
-        //     printMatrixlf4(layerFacade[1].dweights + i * 785 + 1, 28, 28);
-        //     printf("b = %.4lf, w = \n", *(layerFacade[1].weights + i * 785));
-        //     printMatrixlf4(layerFacade[1].weights + i * 785 + 1, 28, 28);
-        // }
+        if (batchIndex == 0) {
+            mem->studyRate *= 0.998;
+        }
     }
-    // else if (step == 3) {
-    //     layerFacade[1].read();
-    //     printf("STEP 3\n");
-    //     printf("b = %.8lf\n", *key1b);
-    //     printMatrixlf(key1w, 28, 28);
-    //     if (isnan(*key1b)) {
-    //         layerFacade[2].read();
-    //         printMatrixlf6(layerFacade[2].trainOutput, 10, 5);
-    //         printMatrixlf6(layerFacade[2].predictOutput, 10, 5);
-    //         printMatrixlf6(layerFacade[2].predictInput, 10, 5);
-    //         return 1;
-    //     }
-    // }
-
     return 0;
 }
 
@@ -101,16 +50,12 @@ void descriptModel(ModelFacade* model) {
     ModelFacadeBuilder builder;
     builder.setMemory(TRAIN_IMAGE_COUNT, TRAIN_BATCH_SIZE);
     builder.input(28, 28); // 0
-    // builder.dense(10); // 1
-    // builder.scale(); // 2
-    // builder.dense(64); // 1
-    // builder.scale(); // 4
+    builder.dense(300); // 1
     builder.dense(10); // 2
-    // builder.scale(); // 4
     builder.output(); // 3
     builder.build(model);
 
-    model->setStudyRate(0.01);
+    model->setStudyRate(0.1);
     model->setTrainListener(&inspect);
 }
 
@@ -161,7 +106,7 @@ int main(int argc, const char* argv[]) {
                 if (testLabelSet.labels[i] == output[i]) {
                     acc++;
                 }
-                if (i < 100) {
+                if (i < 20) {
                     printf("expect %d, got %d\n", testLabelSet.labels[i], output[i]);
                 }
             }

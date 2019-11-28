@@ -83,7 +83,7 @@ void ModelFacade::randomGenerateArgs() {
     this->hostWeights = new double[n];
     srand(time(NULL));
     for (int i = 0; i < n; i++) {
-        this->hostWeights[i] = (rand() % 100) / 100.0 / 784.0;
+        this->hostWeights[i] = ((rand() % 100) / 100.0 - 0.5) / 28.0;
     }
 }
 

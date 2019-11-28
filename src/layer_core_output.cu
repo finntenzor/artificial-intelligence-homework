@@ -5,95 +5,120 @@
 #include "layer_run.h"
 #include "cuda.h"
 
-void layerOutputGetTempPointers(layer_schema_t* schema, int batchSize, double** expx, double** expxSum, double** y) {
+void layerOutputGetTempPointers(layer_schema_t* schema, int batchSize, double** pmaxx, double** psumex, double** pexpx, double** py) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
-    double* pexpx = schema->predictTemp;
-    double* pexpxSum = pexpx + batchSize * outputSize;
-    double* py = pexpxSum + batchSize * 1;
-    // double* pnew = py + batchSize * outputSize;
-    *expx = pexpx;
-    *expxSum = pexpxSum;
-    *y = py;
+    double* maxx = schema->predictTemp;
+    double* sumex = maxx + batchSize * 1;
+    double* expx = sumex + batchSize * 1;
+    double* y = expx + batchSize * outputSize;
+    *pmaxx = maxx;
+    *psumex = sumex;
+    *pexpx = expx;
+    *py = y;
 }
 
-__global__ void layerDevPredictOutput1(double* input, double* output, int outputSize) {
-    int index = blockIdx.x * outputSize + threadIdx.x;
-    // 所有值转为自己关于e的指数
-    output[index] = exp(input[index]);
-}
-
-int layerPredictOutput1(layer_schema_t* schema, int batchSize, double* expx) {
-    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
-    dim3 gridSize(batchSize);
-    dim3 blockSize(outputSize);
-    layerDevPredictOutput1<<<gridSize, blockSize>>>(schema->predictInput, expx, outputSize);
-    return layerIfError(schema->layerIndex);
-}
-
-__global__ void layerDevPredictOutput2(double* input, double* output, int outputSize) {
-    // 求出每个block的和
-    double sum = 0;
+__global__ void layerDevPredictOutput1(double* x, double* maxx, int outputSize) {
+    // 求出x的最大值
+    int begin = blockIdx.x * outputSize;
+    double max = x[begin];
     for (int i = 0; i < outputSize; i++) {
-        sum += input[i];
+        int curr = x[begin + i];
+        if (curr > max) {
+            max = curr;
+        }
     }
-    output[blockIdx.x] = sum;
+    maxx[blockIdx.x] = max;
 }
 
-int layerPredictOutput2(layer_schema_t* schema, int batchSize, double* expx, double* expxSum) {
+int layerPredictOutput1(layer_schema_t* schema, int batchSize, double* maxx) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     dim3 gridSize(batchSize);
     dim3 blockSize(1);
-    layerDevPredictOutput2<<<gridSize, blockSize>>>(expx, expxSum, outputSize);
+    layerDevPredictOutput1<<<gridSize, blockSize>>>(schema->predictInput, maxx, outputSize);
     return layerIfError(schema->layerIndex);
 }
 
-__global__ void layerDevPredictOutput3(double* expx, double* expxSum, double* y, int outputSize) {
+__global__ void layerDevPredictOutput2(double* x, double* maxx, double* expx, int outputSize) {
     int index = blockIdx.x * outputSize + threadIdx.x;
-    // y等于每个exp(x)除以所在block的和
-    if (expxSum[blockIdx.x] == 0) {
-        printf("layerDevPredictOutput3 ZERO: blockIdx.x = %d, threadIdx.x = %d, index = %d\n", blockIdx.x, threadIdx.x, index);
-    }
-    y[index] = expx[index] / expxSum[blockIdx.x];
+    // 求exp(x-a)
+    expx[index] = exp(x[index] - maxx[blockIdx.x]);
 }
 
-int layerPredictOutput3(layer_schema_t* schema, int batchSize, double* expx, double* expxSum, double* y) {
+int layerPredictOutput2(layer_schema_t* schema, int batchSize, double* maxx, double* expx) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     dim3 gridSize(batchSize);
     dim3 blockSize(outputSize);
-    layerDevPredictOutput3<<<gridSize, blockSize>>>(expx, expxSum, y, outputSize);
+    layerDevPredictOutput2<<<gridSize, blockSize>>>(schema->predictInput, maxx, expx, outputSize);
     return layerIfError(schema->layerIndex);
 }
 
-__global__ void layerDevPredictOutput4(double* y, unsigned char* output, int outputSize) {
+__global__ void layerDevPredictOutput3(double* expx, double* sumex, int outputSize) {
+    // 求sum(exp(x-a))
+    int begin = blockIdx.x * outputSize;
+    double sum = 0;
+    for (int i = 0; i < outputSize; i++) {
+        sum += expx[begin + i];
+    }
+    sumex[blockIdx.x] = sum;
+}
+
+int layerPredictOutput3(layer_schema_t* schema, int batchSize, double* expx, double* sumex) {
+    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    dim3 gridSize(batchSize);
+    dim3 blockSize(1);
+    layerDevPredictOutput3<<<gridSize, blockSize>>>(expx, sumex, outputSize);
+    return layerIfError(schema->layerIndex);
+}
+
+__global__ void layerDevPredictOutput4(double* expx, double* sumex, double* y, int outputSize) {
+    int index = blockIdx.x * outputSize + threadIdx.x;
+    // y等于每个exp(x-a)除以sum(exp(x-a))
+    if (sumex[blockIdx.x] == 0) {
+        printf("layerDevPredictOutput4 ZERO: blockIdx.x = %d, threadIdx.x = %d, index = %d\n", blockIdx.x, threadIdx.x, index);
+    }
+    y[index] = expx[index] / sumex[blockIdx.x];
+}
+
+int layerPredictOutput4(layer_schema_t* schema, int batchSize, double* expx, double* sumex, double* y) {
+    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    dim3 gridSize(batchSize);
+    dim3 blockSize(outputSize);
+    layerDevPredictOutput4<<<gridSize, blockSize>>>(expx, sumex, y, outputSize);
+    return layerIfError(schema->layerIndex);
+}
+
+__global__ void layerDevPredictOutput5(double* x, unsigned char* output, int outputSize) {
     // 求出每个block的最大值，返回下标
     int maxIndex = 0;
     int blockOffset = blockIdx.x * outputSize;
     for (int i = 0; i < outputSize; i++) {
-        if (y[blockOffset + i] > y[blockOffset + maxIndex]) {
+        if (x[blockOffset + i] > x[blockOffset + maxIndex]) {
             maxIndex = i;
         }
     }
     output[blockIdx.x] = (unsigned char) (maxIndex);
 }
 
-int layerPredictOutput4(layer_schema_t* schema, int batchSize, double* y, unsigned char* output) {
+int layerPredictOutput5(layer_schema_t* schema, int batchSize, unsigned char* output) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     dim3 gridSize(batchSize);
     dim3 blockSize(1);
-    layerDevPredictOutput4<<<gridSize, blockSize>>>(y, output, outputSize);
+    layerDevPredictOutput5<<<gridSize, blockSize>>>(schema->predictInput, output, outputSize);
     return layerIfError(schema->layerIndex);
 }
 
 int layerPredictOutput(layer_schema_t* schema, int batchSize, unsigned char* output) {
     int ret = 0;
+    double* maxx;
+    double* sumex;
     double* expx;
-    double* expxSum;
     double* y;
-    layerOutputGetTempPointers(schema, batchSize, &expx, &expxSum, &y);
-    ret = ret || layerPredictOutput1(schema, batchSize, expx);
-    ret = ret || layerPredictOutput2(schema, batchSize, expx, expxSum);
-    ret = ret || layerPredictOutput3(schema, batchSize, expx, expxSum, y);
-    ret = ret || layerPredictOutput4(schema, batchSize, y, output);
+    layerOutputGetTempPointers(schema, batchSize, &maxx, &sumex, &expx, &y);
+    ret = ret || layerPredictOutput1(schema, batchSize, maxx);
+    ret = ret || layerPredictOutput2(schema, batchSize, maxx, expx);
+    ret = ret || layerPredictOutput3(schema, batchSize, expx, sumex);
+    ret = ret || layerPredictOutput4(schema, batchSize, expx, sumex, y);
+    ret = ret || layerPredictOutput5(schema, batchSize, output);
     return ret;
 }
 
@@ -114,31 +139,30 @@ __global__ void layerDevCheckOutput(double* y, unsigned char* output, unsigned c
 
 int layerCheckOutput(layer_schema_t* schema, int batchSize, unsigned char* output, unsigned char* labels, double* pacc, double* ploss) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    double* maxx;
+    double* sumex;
     double* expx;
-    double* expxSum;
     double* y;
-    layerOutputGetTempPointers(schema, batchSize, &expx, &expxSum, &y);
+    layerOutputGetTempPointers(schema, batchSize, &maxx, &sumex, &expx, &y);
     layerDevCheckOutput<<<1, 1>>>(y, output, labels, batchSize, outputSize, pacc, ploss);
     return layerIfError(schema->layerIndex);
 }
 
 __global__ void layerDevTrainOutput(double* y, double* output, unsigned char* labels, int outputSize) {
     int index = blockIdx.x * outputSize + threadIdx.x;
-    if (labels[blockIdx.x] == threadIdx.x) { // 相当于pi
-        output[index] = y[index] - 1;
-    } else {
-        output[index] = 0;
-    }
+    double y_ = labels[blockIdx.x] == threadIdx.x ? 1 : 0;
+    output[index] = y[index] - y_;
     // printf("layerDevTrainOutput blockIdx.x = %d, threadIdx.x = %d, output at %p, index = %d, label = %d, y = %lf, output = %lf\n", blockIdx.x, threadIdx.x, output, index, labels[blockIdx.x], y[index], output[index]);
 }
 
 int layerTrainOutput(layer_schema_t* schema, int batchSize, unsigned char* labels) {
     int outputSize = schema->inputDepth * schema->inputHeight * schema->inputWidth;
     double* output = schema->trainOutput;
+    double* maxx;
+    double* sumex;
     double* expx;
-    double* expxSum;
     double* y;
-    layerOutputGetTempPointers(schema, batchSize, &expx, &expxSum, &y);
+    layerOutputGetTempPointers(schema, batchSize, &maxx, &sumex, &expx, &y);
     dim3 gridSize(batchSize);
     dim3 blockSize(outputSize);
     layerDevTrainOutput<<<gridSize, blockSize>>>(y, output, labels, outputSize);

@@ -184,6 +184,7 @@ void ModelFacadeBuilder::output() {
     layer_schema_t* lastSchema;
     int index = layers.size();
     lastSchema = &layers[index - 1];
+    int outputSize = lastSchema->outputDepth * lastSchema->outputHeight * lastSchema->outputWidth;
 
     schema.layerIndex = index;
     schema.type = LAYER_TYPE_OUTPUT;
@@ -200,9 +201,10 @@ void ModelFacadeBuilder::output() {
     schema.operationRowBasis = 0;
     schema.operationColBasis = 0;
 
-    schema.predictTempSize = batchSize * (schema.outputDepth * schema.outputHeight * schema.outputWidth) // 每一个输入的exp
-        + batchSize * 1 // 10个exp的和
-        + batchSize * (schema.outputDepth * schema.outputHeight * schema.outputWidth); // 各exp除以exp之和
+    schema.predictTempSize = batchSize * 1 // 10个x中的最大值
+        + batchSize * 1 // 10个exp(x-a)的和
+        + batchSize * outputSize // 所有的exp(x-a)
+        + batchSize * outputSize; // 所有的y
     schema.trainTempSize = 0;
     schema.weightsSize = 0;
     layerInitSizes(&schema, batchSize);

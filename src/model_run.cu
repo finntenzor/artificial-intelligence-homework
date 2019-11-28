@@ -281,7 +281,7 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
     double loss = 0;
 
     // TODO 将ep改为loss判断
-    for (int ep = 0; !ret && ep < 10; ep++) {
+    for (int ep = 0; !ret && ep < 20; ep++) {
         for (int i = 0; !ret && i < batchCount; i++) {
             int offset = i * mem->batchSize;
             if (batchCallback != NULL) {
@@ -301,7 +301,9 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
             }
             ret = ret || modelFetchAccuracyRate(mem, &accuracyRate);
             ret = ret || modelFetchLoss(mem, &loss);
-            printf("当前正确率 = %10.6lf%%, 损失 = %.6lf\n", accuracyRate * 100, loss);
+            if (i == 0) {
+                printf("当前正确率 = %10.6lf%%, 损失 = %.6lf\n", accuracyRate * 100, loss);
+            }
         }
     }
     return ret;

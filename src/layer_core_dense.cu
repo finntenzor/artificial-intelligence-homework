@@ -28,9 +28,6 @@ __global__ void layerDevPredictDense(double* output, double* input, double* weig
         //     printf("%d: w = %lf, x = %lf, z = %lf\n", i, args[weightIndex], input[i], z);
         // }
     }
-    // 除以神经元个数，进行归一化
-    // z /= sqrt((double)(inputSize + 1));
-    z /= (inputSize / 2);
     // relu激活函数
     output[outputIndex] = (z > 0 ? z : 0);
     // printf("output[%d] = %lf (%lf)\n", outputIndex, output[outputIndex], z);
@@ -51,9 +48,7 @@ __global__ void layerDevTrainDense1(double* trainTemp, double* trainInput, doubl
     int index = blockIdx.x * outputSize + threadIdx.x;
     // relu导数为0或者1 乘以1不变 乘以0变为0 等价于if语句
     if (predictOutput[index] > 0) {
-        // trainTemp[index] = trainInput[index] / sqrt((double)(inputSize + 1));
-        trainTemp[index] = trainInput[index] / (inputSize / 2);
-        // trainTemp[index] = trainInput[index];
+        trainTemp[index] = trainInput[index];
     } else {
         trainTemp[index] = 0;
     }
@@ -76,7 +71,7 @@ __global__ void layerDevTrainDense2(double* trainOutput, double* weights, double
     for (int i = 0; i < outputSize; i++) {
         // i是通道号
         int weightIndex = i * (inputSize + 1) // 第i个通道的权重参数页
-            + threadIdx.x; // 层输入x的序号
+            + 1 + threadIdx.x; // 层输入x的序号
 
         // 上一层各通道导数和对应位置权重乘积之和
         // 求和是因为损失函数表示为各损失之和
