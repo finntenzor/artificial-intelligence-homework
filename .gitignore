@@ -1,0 +1,7 @@
+*.obj
+*.exp
+*.lib
+*.exe
+*.zip
+*.model
+*.log
