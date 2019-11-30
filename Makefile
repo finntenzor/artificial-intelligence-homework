@@ -19,11 +19,11 @@ $(cu_obj):./obj/%.obj:./src/%.cu
 	$(CC) -c $< -o $@ $(FLAGS)
 build:$(target)
 train:
-	./main.exe --train --save ./mnist.model
+	./main.exe --train --config=mnist.config
 predict:
-	./main.exe --predict --load ./mnist.model
+	./main.exe --predict --config=mnist.config
 run:
-	./main.exe --train --predict --save ./mnist.model
+	./main.exe --train --predict --config=mnist.config
 clean:
 	-rm *.exp *.lib *.exe *.log ./obj/*.obj
 count:

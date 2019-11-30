@@ -273,7 +273,7 @@ int modelApplyDweights(model_schema_t* mem, int offset) {
     return 0;
 }
 
-int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, int batchIndex, int step)) {
+int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, int batchIndex, int step), int printTrainProcess) {
     int ret = 0;
     int batchCount = modelGetBatchCount(mem);
     ret = modelClearDweights(mem);
@@ -281,7 +281,7 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
     double loss = 0;
 
     // TODO 将ep改为loss判断
-    for (int ep = 0; !ret && ep < 20; ep++) {
+    for (int ep = 0; !ret && ep < mem->roundCount; ep++) {
         for (int i = 0; !ret && i < batchCount; i++) {
             int offset = i * mem->batchSize;
             if (batchCallback != NULL) {
@@ -301,10 +301,11 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
             }
             ret = ret || modelFetchAccuracyRate(mem, &accuracyRate);
             ret = ret || modelFetchLoss(mem, &loss);
-            if (i == 0) {
+            if (i == 0 && printTrainProcess) {
                 printf("当前正确率 = %10.6lf%%, 损失 = %.6lf\n", accuracyRate * 100, loss);
             }
         }
+        mem->studyRate *= mem->attenuationRate;
     }
     return ret;
 }

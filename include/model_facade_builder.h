@@ -12,12 +12,12 @@
 #include "model_memory.h"
 
 class ModelFacadeBuilder {
-public:
-    ModelFacadeBuilder();
-    ~ModelFacadeBuilder();
     int batchSize;
     int inputCount;
     std::vector<layer_schema_t> layers;
+public:
+    ModelFacadeBuilder();
+    ~ModelFacadeBuilder();
     void setMemory(int inputCount, int batchSize);
     void input(int width, int height);
     void convolution(int channels, int kernelWidth, int kernelHeight, int rowStep, int colStep, int rowBasis, int colBasis);

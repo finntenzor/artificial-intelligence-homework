@@ -21,14 +21,16 @@ public:
     friend class ModelFacadeBuilder;
     int getWeightsSize();
     int getTotalMemoryUsed();
-    void saveModel(const char* filepath);
-    void loadModel(const char* filepath);
+    int saveModel(const char* filepath);
+    int loadModel(const char* filepath);
     int predict(unsigned char* input, unsigned char* output, int totalCount = 0);
     double getAccuracyRate();
-    int train(unsigned char* input, unsigned char* labels, int totalCount = 0);
+    int train(unsigned char* input, unsigned char* labels, int totalCount = 0, int printTrainProcess = 1);
     void setTrainListener(int (*trainListenr)(model_schema_t* mem, int batchIndex, int step));
     layer_schema_t* layerAt(int index);
     void setStudyRate(double studyRate);
+    void setAttenuationRate(double attenuationRate);
+    void setRoundCount(int roundCount);
 };
 
 #endif // MODEL_FACADE_H

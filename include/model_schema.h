@@ -20,6 +20,8 @@ typedef struct model_schema {
     double* accuracyRate; // 准确度
     double* loss; // 损失
     double studyRate; // 学习率
+    double attenuationRate; // 学习率衰减率
+    int roundCount; // 学习多少轮
 } model_schema_t;
 
 #endif // MODEL_SCHEMA_H

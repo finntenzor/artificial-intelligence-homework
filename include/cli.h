@@ -8,9 +8,10 @@ typedef struct cli_arguments {
     int train; // -t
     int predict;  // -p
     char loadPath[1000]; // -l= -l xxx --load
-    char savePath[1000]; //
+    char savePath[1000]; // -s
+    char configPath[1000]; // -c
 } cli_arguments_t;
 
-void parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]);
+int parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]);
 
 #endif // CLI_H

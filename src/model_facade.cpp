@@ -34,17 +34,17 @@ int ModelFacade::getTotalMemoryUsed() {
     return modelGetTotalMemoryUsed(this);
 }
 
-void ModelFacade::saveModel(const char* filepath) {
+int ModelFacade::saveModel(const char* filepath) {
     FILE* f = NULL;
 
     f = fopen(filepath, "wb");
     if (f == NULL) {
-        fprintf(stderr, "无法以写入模式打开模型文件\n");
-        return;
+        fprintf(stderr, "无法以写入模式打开模型文件 %s\n", filepath);
+        return 1;
     }
     if (hostWeights == NULL) {
         fprintf(stderr, "模型权重为空，无法保存");
-        return;
+        return 1;
     }
 
     fwrite(hostWeights, sizeof(double), getWeightsSize(), f);
@@ -52,15 +52,17 @@ void ModelFacade::saveModel(const char* filepath) {
     if (f != NULL) {
         fclose(f);
     }
+
+    return 0;
 }
 
-void ModelFacade::loadModel(const char* filepath) {
+int ModelFacade::loadModel(const char* filepath) {
     FILE* f = NULL;
 
     f = fopen(filepath, "rb");
     if (f == NULL) {
-        fprintf(stderr, "无法以读取模式打开模型文件\n");
-        return;
+        fprintf(stderr, "无法以读取模式打开模型文件 %s\n", filepath);
+        return 1;
     }
 
     int n = getWeightsSize();
@@ -73,6 +75,8 @@ void ModelFacade::loadModel(const char* filepath) {
     if (f != NULL) {
         fclose(f);
     }
+
+    return 0;
 }
 
 void ModelFacade::randomGenerateArgs() {
@@ -115,11 +119,11 @@ double ModelFacade::getAccuracyRate() {
     return accuracyRate;
 }
 
-int ModelFacade::train(unsigned char* input, unsigned char* labels, int totalCount) {
+int ModelFacade::train(unsigned char* input, unsigned char* labels, int totalCount, int printTrainProcess) {
     int ret = 0;
 
     if (totalCount > maxInputCount) {
-        fprintf(stderr, "内存不足，无法训练此规模的数据\n");
+        fprintf(stderr, "内存不足, 无法训练此规模的数据; 需要 %d, 已给出 %d\n", totalCount, maxInputCount);
         return -1;
     }
     if (totalCount != 0) {
@@ -133,7 +137,7 @@ int ModelFacade::train(unsigned char* input, unsigned char* labels, int totalCou
     ret = ret || modelCopyInput(this, input);
     ret = ret || modelCopyLabels(this, labels);
     ret = ret || modelCopyToWeights(this, hostWeights);
-    ret = ret || modelTrain(this, batchCallback);
+    ret = ret || modelTrain(this, batchCallback, printTrainProcess);
     ret = ret || modelCopyFromWeights(this, hostWeights);
     return ret;
 }
@@ -152,4 +156,12 @@ layer_schema_t* ModelFacade::layerAt(int index) {
 
 void ModelFacade::setStudyRate(double studyRate) {
     this->studyRate = studyRate;
+}
+
+void ModelFacade::setAttenuationRate(double attenuationRate) {
+    this->attenuationRate = attenuationRate;
+}
+
+void ModelFacade::setRoundCount(int roundCount) {
+    this->roundCount = roundCount;
 }

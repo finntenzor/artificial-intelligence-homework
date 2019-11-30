@@ -20,6 +20,6 @@ int modelPredict(model_schema_t* mem);
 int modelClearDweights(model_schema_t* mem);
 int modelTrainBatch(model_schema_t* mem, int offset);
 int modelApplyDweights(model_schema_t* mem, int offset);
-int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, int batchIndex, int step));
+int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, int batchIndex, int step), int printTrainProcess);
 
 #endif // MODEL_RUN_H

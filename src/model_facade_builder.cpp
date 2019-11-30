@@ -3,6 +3,7 @@
  */
 
 #include "model_facade_builder.h"
+#include <cstdio>
 
 ModelFacadeBuilder::ModelFacadeBuilder() {
     batchSize = 0;
@@ -95,8 +96,8 @@ void ModelFacadeBuilder::pooling(int windowWidth, int windowHeight, int rowStep,
     schema.type = LAYER_TYPE_POOLING;
 
     layerConcatInputSize(&schema, &layers[index - 1]);
-    while (outputWidth * windowWidth < schema.inputWidth) outputWidth++;
-    while (outputHeight * windowHeight < schema.inputHeight) outputHeight++;
+    while (outputWidth * windowWidth + colBasis < schema.inputWidth) outputWidth++;
+    while (outputHeight * windowHeight + rowBasis < schema.inputHeight) outputHeight++;
     // for (int i = 0; i < outputWidth; i++) {
     //     printf("%d ", i * windowWidth);
     // }

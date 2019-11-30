@@ -14,6 +14,7 @@ static const int ARG_LOAD_PATH = 3;
 static const int ARG_SAVE_PATH = 4;
 static const int ARG_TRAIN = 5;
 static const int ARG_PREDICT = 6;
+static const int ARG_CONFIG = 7;
 
 static const int STATUS_ERROR = -1;
 static const int STATUS_EXIT = 0;
@@ -35,6 +36,7 @@ void clearCliArguments(cli_arguments_t* cli) {
     cli->predict = 0;
     strcpy(cli->loadPath, "");
     strcpy(cli->savePath, "");
+    strcpy(cli->configPath, "");
 }
 
 int getArgFromLongArgument(const char* str, int* currentPos) {
@@ -60,12 +62,15 @@ int getArgFromLongArgument(const char* str, int* currentPos) {
     } else if (strcmp(argumentName, "predict") == 0) {
         arg = ARG_PREDICT;
         pos += 7;
+    } else if (strcmp(argumentName, "config") == 0) {
+        arg = ARG_CONFIG;
+        pos += 6;
     }
     *currentPos = pos;
     return arg;
 }
 
-void parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
+int parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
     int status = STATUS_READY;
     int index = 1;
     int currentArg = 0;
@@ -128,6 +133,9 @@ void parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
                 } else if (arg[currentPos] == 'p') {
                     currentArg = ARG_PREDICT;
                     status = STATUS_CONFIRM_EXPECT;
+                } else if (arg[currentPos] == 'c') {
+                    currentArg = ARG_CONFIG;
+                    status = STATUS_CONFIRM_EXPECT;
                 } else {
                     fprintf(stderr, "无法识别的选项 %s\n", arg);
                     status = STATUS_ERROR;
@@ -147,6 +155,8 @@ void parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
                     status = STAUTS_EXPECT_END;
                 } else if (currentArg == ARG_PREDICT) {
                     status = STAUTS_EXPECT_END;
+                } else if (currentArg == ARG_CONFIG) {
+                    status = STATUS_EXPECT_INPUT;
                 }
                 break;
             case STAUTS_EXPECT_END:
@@ -202,6 +212,9 @@ void parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
                 } else if (currentArg == ARG_SAVE_PATH) {
                     strcpy(cli->savePath, arg + currentPos);
                     status = STATUS_READY;
+                } else if (currentArg == ARG_CONFIG) {
+                    strcpy(cli->configPath, arg + currentPos);
+                    status = STATUS_READY;
                 } else {
                     fprintf(stderr, "不可达代码 READY INPUT\n");
                     status = STATUS_ERROR;
@@ -226,4 +239,5 @@ void parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
         cli->isError = 1;
         fprintf(stderr, "命令行解析工具检测到错误发生，异常信息已经输出\n");
     }
+    return cli->isError;
 }

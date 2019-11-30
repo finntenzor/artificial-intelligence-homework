@@ -13,7 +13,36 @@
 #include "cli.h"
 #include "visual_funcs.h"
 #include "read_file.h"
+#include "config.h"
 #include "layer.h"
 #include "model.h"
+
+typedef struct model_config {
+    ModelFacadeBuilder* builder;
+    char trainImage[1000];
+    char trainLabel[1000];
+    char testImage[1000];
+    char testLabel[1000];
+    char loadPath[1000];
+    char savePath[1000];
+    int roundCount;
+    int memoryCount;
+    int batchSize;
+    int trainImageCount;
+    int predictImageCount;
+    int predictOutputCount;
+    double studyRate;
+    double attenuationRate;
+    int printMemoryUsed;
+    int printTrainProcess;
+    int printPredictOutput;
+    int printPredictAccuracyRate;
+} model_config_t;
+
+int showDevices();
+void initConfig(model_config_t* config, ModelFacadeBuilder* builder);
+int readConfig(model_config_t* config, const char* configPath);
+int beforeModule(void* dist, const char* module);
+int readLayer(void* dist, const char* layerName, const int n, const int argv[]);
 
 #endif // MAIN_H
