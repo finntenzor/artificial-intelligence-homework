@@ -49,7 +49,7 @@ void ModelFacadeBuilder::input(int width, int height) {
     layers.push_back(schema);
 }
 
-void ModelFacadeBuilder::convolution(int channels, int kernelWidth, int kernelHeight, int rowStep, int colStep, int rowBasis, int colBasis) {
+void ModelFacadeBuilder::convolution(int channels, int kernelWidth, int kernelHeight, int rowStep, int colStep, int rowBasis, int colBasis, int outputWidth, int outputHeight) {
     layer_schema_t schema;
     int index = layers.size();
     int outputWidth = 0, outputHeight = 0;
@@ -58,12 +58,8 @@ void ModelFacadeBuilder::convolution(int channels, int kernelWidth, int kernelHe
     schema.type = LAYER_TYPE_CONVOLUTION;
 
     layerConcatInputSize(&schema, &layers[index - 1]);
-    while (outputWidth * colStep + colBasis < schema.inputWidth) outputWidth++;
-    while (outputHeight * rowStep + rowBasis < schema.inputHeight) outputHeight++;
-    // for (int i = 0; i < outputWidth; i++) {
-    //     printf("%d ", i * colStep + colBasis);
-    // }
-    // printf("=> %d %d\n", outputWidth, outputHeight);
+    if (outputWidth == 0) outputWidth = (schema.inputWidth - colBasis - kernelWidth + colStep) / colStep;
+    if (outputHeight == 0) outputHeight = (schema.inputHeight - rowBasis - kernelHeight + rowStep) / rowStep;
 
     schema.outputWidth = outputWidth;
     schema.outputHeight = outputHeight;
@@ -83,8 +79,8 @@ void ModelFacadeBuilder::convolution(int channels, int kernelWidth, int kernelHe
     layers.push_back(schema);
 }
 
-void ModelFacadeBuilder::convolution(int channels, int kernelSize, int step, int basis) {
-    this->convolution(channels, kernelSize, kernelSize, step, step, basis, basis);
+void ModelFacadeBuilder::convolution(int channels, int kernelSize, int step, int basis, int outputSize) {
+    this->convolution(channels, kernelSize, kernelSize, step, step, basis, basis, outputSize, outputSize);
 }
 
 void ModelFacadeBuilder::pooling(int windowWidth, int windowHeight, int rowStep, int colStep, int rowBasis, int colBasis, int outputWidth, int outputHeight) {

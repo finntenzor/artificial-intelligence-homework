@@ -20,8 +20,8 @@ public:
     ~ModelFacadeBuilder();
     void setMemory(int inputCount, int batchSize);
     void input(int width, int height);
-    void convolution(int channels, int kernelWidth, int kernelHeight, int rowStep, int colStep, int rowBasis, int colBasis);
-    void convolution(int channels, int kernelSize, int step, int basis = 0);
+    void convolution(int channels, int kernelWidth, int kernelHeight, int rowStep, int colStep, int rowBasis, int colBasis, int outputWidth = 0, int outputHeight = 0);
+    void convolution(int channels, int kernelSize, int step, int basis = 0, int outputSize = 0);
     void pooling(int windowWidth, int windowHeight, int rowStep, int colStep, int rowBasis, int colBasis, int outputWidth = 0, int outputHeight = 0);
     void pooling(int windowSize, int step = 0, int basis = 0, int outputSize = 0);
     void dense(int channels);

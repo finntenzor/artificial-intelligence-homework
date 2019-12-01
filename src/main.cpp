@@ -199,6 +199,7 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.beforeModule(&beforeModule);
     reader.expectLayer(MODULE_MODEL, "Input", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Dense", &readLayer);
+    reader.expectLayer(MODULE_MODEL, "Convolution", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Pooling", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Output", &readLayer);
     return reader.read(configPath);
@@ -236,6 +237,21 @@ int readLayer(void* dist, const char* layerName, const int n, const int argv[]) 
             return 1;
         }
         config->builder->input(argv[0], argv[1]);
+    } else if (strcmp(layerName, "Convolution") == 0) {
+        if (n == 3) {
+            config->builder->convolution(argv[0], argv[1], argv[2]);
+        } else if (n == 4) {
+            config->builder->convolution(argv[0], argv[1], argv[2], argv[3]);
+        } else if (n == 5) {
+            config->builder->convolution(argv[0], argv[1], argv[2], argv[3], argv[4]);
+        } else if (n == 7) {
+            config->builder->convolution(argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]);
+        } else if (n == 9) {
+            config->builder->convolution(argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7], argv[8]);
+        } else {
+            fprintf(stderr, "卷积层参数个数应该在以下参数个数之中：3、4、7、9, 实际上获得 %d 个参数\n", n);
+            return 1;
+        }
     } else if (strcmp(layerName, "Pooling") == 0) {
         if (n == 1) {
             config->builder->pooling(argv[0]);

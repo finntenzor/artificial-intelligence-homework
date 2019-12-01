@@ -5,12 +5,6 @@
 #include "layer_run.h"
 #include "cuda.h"
 
-// // 仅一组权重
-// __device__ int layerGetPoolingWeightIndex(layer_schema_t* schema, int channelIndex, int rowIndex, int colIndex) {
-//     // 不加1，没有偏置
-//     return (channelIndex * schema->inputHeight + rowIndex) * schema->inputWidth + colIndex;
-// }
-
 __device__ int layerPoolingBackwardIndexBegin(int index, int basis, int window, int step) {
     // 对于被除数为负数时计算结果有误，但是由于不访问对应下标的单元，结果是一致的
     return (index - basis - window + step) / step;
