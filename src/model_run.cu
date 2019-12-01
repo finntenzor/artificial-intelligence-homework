@@ -128,66 +128,6 @@ int modelFetchLoss(model_schema_t* mem, double* loss) {
     return 0;
 }
 
-// __global__ void modelDevGetBatchAccuracyCount(double* accuracyCount, unsigned char* output, unsigned char* labels, int size) {
-//     int accCount = 0;
-//     for (int i = 0; i < size; i++) {
-//         int label = labels[i];
-//         int predict = output[i];
-//         if (predict == label) {
-//             accCount++;
-//         }
-//     }
-//     *accuracyCount = accCount;
-// }
-
-// int modelGetBatchAccuracy(model_schema_t* mem, int offset, double* accuracyCount, int* size) {
-//     cudaError_t cudaStatus = cudaSuccess;
-//     double acc = 0;
-//     int outputBlockSize = modelGetOutputBlockSize(mem);
-//     int labelsBlockSize = modelGetLabelsBlockSize(mem);
-//     int batchSize = minInt(mem->inputCount - offset, mem->batchSize);
-//     unsigned char* output = mem->output + offset * outputBlockSize;
-//     unsigned char* labels = mem->labels + offset * labelsBlockSize;
-
-//     if (batchSize == 0) {
-//         return -1;
-//     }
-
-//     modelDevGetBatchAccuracyCount<<<1, 1>>>(mem->accuracyRate, output, labels, batchSize);
-//     if (modelIfError("计算模型准确率时发生错误")) return 1;
-
-//     cudaStatus = cudaMemcpy(&acc, mem->accuracyRate, 1 * sizeof(double), cudaMemcpyDeviceToHost);
-//     if (modelIfErrorWithStatus(cudaStatus, "无法将准确率从显存拷贝回内存")) return 2;
-
-//     *accuracyCount = acc;
-//     *size = batchSize;
-//     return 0;
-// }
-
-// double modelGetBatchAccuracyRate(model_schema_t* mem, int offset) {
-//     double acc;
-//     int size;
-//     int ret = modelGetBatchAccuracy(mem, offset, &acc, &size);
-//     return (ret) ? (-1) : (acc / size);
-// }
-
-// double modelGetAccuracyRate(model_schema_t* mem) {
-//     int batchCount = modelGetBatchCount(mem);
-//     double accCount = 0;
-//     for (int i = 0; i < batchCount; i++) {
-//         double acc;
-//         int size;
-//         int ret = modelGetBatchAccuracy(mem, mem->batchSize, &acc, &size);
-//         if (ret) {
-//             accCount = -1;
-//             break;
-//         } else {
-//             accCount += acc;
-//         }
-//     }
-//     return (accCount >= 0) ? (accCount / mem->inputCount) : (-1);
-// }
-
 int modelPredict(model_schema_t* mem) {
     int ret = 0;
     int batchCount = modelGetBatchCount(mem);
@@ -235,9 +175,9 @@ int modelTrainBatch(model_schema_t* mem, int offset) {
         // case LAYER_TYPE_CONVOLUTION:
         //     ret = layerPredictConvolution(schema, batchSize);
         //     break;
-        // case LAYER_TYPE_POOLING:
-        //     ret = layerPredictPooling(schema, batchSize);
-        //     break;
+        case LAYER_TYPE_POOLING:
+            ret = layerTrainPooling(schema, batchSize);
+            break;
         case LAYER_TYPE_DENSE:
             ret = layerTrainDense(schema, batchSize);
             break;
@@ -302,7 +242,7 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
             ret = ret || modelFetchAccuracyRate(mem, &accuracyRate);
             ret = ret || modelFetchLoss(mem, &loss);
             if (i == 0 && printTrainProcess) {
-                printf("当前正确率 = %10.6lf%%, 损失 = %.6lf\n", accuracyRate * 100, loss);
+                printf("[%d]当前正确率 = %10.6lf%%, 损失 = %.6lf\n", ep, accuracyRate * 100, loss);
             }
         }
         mem->studyRate *= mem->attenuationRate;

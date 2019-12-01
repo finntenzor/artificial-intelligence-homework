@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <cmath>
 
 #include "model_facade.h"
 
@@ -80,14 +81,20 @@ int ModelFacade::loadModel(const char* filepath) {
 }
 
 void ModelFacade::randomGenerateArgs() {
-    int n = getWeightsSize();
+    double* w;
     if (this->hostWeights != NULL) {
-        delete this->hostWeights;
+        delete [] this->hostWeights;
     }
-    this->hostWeights = new double[n];
+    this->hostWeights = w = new double[getWeightsSize()];
     srand(time(NULL));
-    for (int i = 0; i < n; i++) {
-        this->hostWeights[i] = ((rand() % 100) / 100.0 - 0.5) / 28.0;
+    for (int k = 0; k < schemaCount; k++) {
+        layer_schema_t* schema = &schemas[k];
+        int m = schema->weightsSize;
+        double q = sqrt(2.0 / schema->predictInputSize);
+        for (int i = 0; i < m; i++) {
+            w[i] = ((rand() % 1024) / 1024.0 - 0.5) * q;
+        }
+        w += m;
     }
 }
 
