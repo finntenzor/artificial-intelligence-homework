@@ -5,52 +5,88 @@
 #include "layer_run.h"
 #include "cuda.h"
 
-// 卷积核下标，最大为输出深度-1
-__device__ int layerGetConvolutionArgsIndex(layer_schema_t* schema, int kernelIndex) {
-    return kernelIndex * (schema->inputDepth * schema->operationHeight * schema->operationWidth + 1);
-}
+// // 卷积核下标，最大为输出深度-1
+// __device__ int layerGetConvolutionArgsIndex(layer_schema_t* schema, int kernelIndex) {
+//     return kernelIndex * (schema->inputDepth * schema->operationHeight * schema->operationWidth + 1);
+// }
 
-// 共有卷积核组权重和偏置
-__device__ int layerGetConvolutionWeightIndexOffset(layer_schema_t* schema, int channelIndex, int rowIndex, int colIndex) {
-    // 多加1是因为这个位置是偏置
-    return 1 + (channelIndex * schema->operationHeight + rowIndex) * schema->operationWidth + colIndex;
-}
+// // 共有卷积核组权重和偏置
+// __device__ int layerGetConvolutionWeightIndexOffset(layer_schema_t* schema, int channelIndex, int rowIndex, int colIndex) {
+//     // 多加1是因为这个位置是偏置
+//     return 1 + (channelIndex * schema->operationHeight + rowIndex) * schema->operationWidth + colIndex;
+// }
 
-__global__ void layerDevPredictConvolution(layer_schema_t schema) {
-    double* output = schema.predictOutput;
-    double* input = schema.predictInput;
-    double* args = schema.weights;
-    // 参数总个数 = outputDepth * (operationWidth * operationHeight * inputDepth + 1)
-    int outputIndex = layerGetCurrentOutputIndex(&schema);
-    int argsBasis = layerGetConvolutionArgsIndex(&schema, blockIdx.y);
+__global__ void layerDevPredictConvolution(double* output, double* input, double* weights,
+    int kernelHeight, int kernelWidth, int inputChannels,
+    int rowStep, int colStep,
+    int rowBasis, int colBasis,
+    int inputSize, int inputChannelSize, int inputHeight, int inputWidth,
+    int outputSize, int outputChannelSize, int outputHeight, int outputWidth,
+    int weightsSize
+)
+{
+    double* outputBase = output + blockIdx.x * outputSize + blockIdx.y * outputChannelSize;
+    double* inputBase = input + blockIdx.x * inputSize;
+    double* weightsBase = weights + blockIdx.y * weightsSize;
+    // double* b = weightsBase;
+    double* w = weightsBase + 1;
 
-    int kernelWidth = (int)schema.operationWidth;
-    int kernelHeight = (int)schema.operationHeight;
-    int rowBegin = threadIdx.x * schema.operationRowStep + schema.operationRowBasis;
-    int colBegin = threadIdx.y * schema.operationColStep + schema.operationColBasis;
+    int inputRowBegin = threadIdx.x * rowStep + rowBasis;
+    int inputColBegin = threadIdx.y * colStep + colBasis;
 
-    double z = args[argsBasis]; // 偏置
-    for (int k = 0; k < schema.inputDepth; k++) { // 输入通道数
-        for (int i = 0; i < kernelHeight; i++) { // 输入行号偏移量
-            for (int j = 0; j < kernelWidth; j++) { // 输入列号偏移量
-                int row = rowBegin + i; // 输入行号
-                int col = colBegin + j; // 输入列号
-                int inputIndex = layerGetInputIndex(&schema, blockIdx.x, k, row, col);
-                int weightIndex = argsBasis + layerGetConvolutionWeightIndexOffset(&schema, k, i, j);
-                if (row < 0 || row >= schema.inputHeight || col < 0 || col >= schema.inputWidth) {
-                    continue;
-                }
-                z += args[weightIndex] * input[inputIndex];
+    double z = *weightsBase;
+    for (int d = 0; d < inputChannels; d++) {
+        for (int i = 0; i < kernelHeight; i++) {
+            int xRow = inputRowBegin + i;
+            if (xRow <= 0 || xRow >= inputHeight) continue;
+            for (int j = 0; j < kernelWidth; j++) {
+                int xCol = inputColBegin + j;
+                if (j <= 0 || j >= inputWidth) continue;
+                int xIndex = (d * inputChannels + xRow) * inputWidth + xCol;
+                int wIndex = (d * inputChannels + i) * kernelWidth + j;
+                z += w[wIndex] * inputBase[xIndex];
             }
         }
     }
+
     // relu激活函数
-    output[outputIndex] = (z > 0 ? z : 0);
+    outputBase[threadIdx.x * blockDim.y + threadIdx.y] = (z > 0 ? z : 0);
 }
 
 int layerPredictConvolution(layer_schema_t* schema, int batchSize) {
+    int inputSize = schema->inputDepth * schema->inputHeight * schema->inputWidth;
+    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    int inputChannelSize = schema->inputHeight * schema->inputWidth;
+    int outputChannelSize = schema->outputHeight * schema->outputWidth;
+    int weightsSize = schema->inputDepth * schema->operationHeight * schema->operationWidth + 1;
     dim3 gridSize(batchSize, schema->outputDepth);
     dim3 blockSize(schema->outputHeight, schema->outputWidth);
-    layerDevPredictConvolution<<<gridSize, blockSize>>>(*schema);
+    layerDevPredictConvolution<<<gridSize, blockSize>>>(schema->predictOutput, schema->predictInput, schema->weights,
+        schema->operationHeight, schema->operationWidth, schema->inputDepth,
+        schema->operationRowStep, schema->operationColStep,
+        schema->operationRowBasis, schema->operationColBasis,
+        inputSize, inputChannelSize, schema->inputHeight, schema->inputWidth,
+        outputSize, outputChannelSize, schema->outputHeight, schema->outputWidth,
+        weightsSize
+    );
+    return layerIfError(schema->layerIndex);
+}
+
+int layerTrainConvolution(layer_schema_t* schema, int batchSize) {
+    // int inputSize = schema->inputDepth * schema->inputHeight * schema->inputWidth;
+    // int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    // int inputChannelSize = schema->inputHeight * schema->inputWidth;
+    // int outputChannelSize = schema->outputHeight * schema->outputWidth;
+    // int weightsSize = schema->inputDepth * schema->operationHeight * schema->operationWidth + 1;
+    // dim3 gridSize(batchSize, schema->outputDepth);
+    // dim3 blockSize(schema->outputHeight, schema->outputWidth);
+    // layerDevPredictConvolution<<<gridSize, blockSize>>>(schema->predictOutput, schema->predictInput, schema->weights,
+    //     schema->operationHeight, schema->operationWidth, schema->inputDepth,
+    //     schema->operationRowStep, schema->operationColStep,
+    //     schema->operationRowBasis, schema->operationColBasis,
+    //     inputSize, inputChannelSize, schema->inputHeight, schema->inputWidth,
+    //     outputSize, outputChannelSize, schema->outputHeight, schema->outputWidth,
+    //     weightsSize
+    // );
     return layerIfError(schema->layerIndex);
 }

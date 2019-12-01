@@ -172,9 +172,9 @@ int modelTrainBatch(model_schema_t* mem, int offset) {
         // case LAYER_TYPE_INPUT:
         //     ret = layerPredictInput(schema, batchSize, input);
         //     break;
-        // case LAYER_TYPE_CONVOLUTION:
-        //     ret = layerPredictConvolution(schema, batchSize);
-        //     break;
+        case LAYER_TYPE_CONVOLUTION:
+            ret = layerTrainConvolution(schema, batchSize);
+            break;
         case LAYER_TYPE_POOLING:
             ret = layerTrainPooling(schema, batchSize);
             break;

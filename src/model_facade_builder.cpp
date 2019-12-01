@@ -52,7 +52,6 @@ void ModelFacadeBuilder::input(int width, int height) {
 void ModelFacadeBuilder::convolution(int channels, int kernelWidth, int kernelHeight, int rowStep, int colStep, int rowBasis, int colBasis, int outputWidth, int outputHeight) {
     layer_schema_t schema;
     int index = layers.size();
-    int outputWidth = 0, outputHeight = 0;
 
     schema.layerIndex = index;
     schema.type = LAYER_TYPE_CONVOLUTION;
