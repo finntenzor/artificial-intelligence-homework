@@ -87,21 +87,16 @@ void ModelFacadeBuilder::convolution(int channels, int kernelSize, int step, int
     this->convolution(channels, kernelSize, kernelSize, step, step, basis, basis);
 }
 
-void ModelFacadeBuilder::pooling(int windowWidth, int windowHeight, int rowStep, int colStep, int rowBasis, int colBasis) {
+void ModelFacadeBuilder::pooling(int windowWidth, int windowHeight, int rowStep, int colStep, int rowBasis, int colBasis, int outputWidth, int outputHeight) {
     layer_schema_t schema;
     int index = layers.size();
-    int outputWidth = 0, outputHeight = 0;
 
     schema.layerIndex = index;
     schema.type = LAYER_TYPE_POOLING;
 
     layerConcatInputSize(&schema, &layers[index - 1]);
-    while (outputWidth * windowWidth + colBasis < schema.inputWidth) outputWidth++;
-    while (outputHeight * windowHeight + rowBasis < schema.inputHeight) outputHeight++;
-    // for (int i = 0; i < outputWidth; i++) {
-    //     printf("%d ", i * windowWidth);
-    // }
-    // printf("=> %d %d\n", outputWidth, outputHeight);
+    if (outputWidth == 0) outputWidth = (schema.inputWidth - colBasis - windowWidth + colStep) / colStep;
+    if (outputHeight == 0) outputHeight = (schema.inputHeight - rowBasis - windowHeight + rowStep) / rowStep;
 
     schema.outputWidth = outputWidth;
     schema.outputHeight = outputHeight;
@@ -114,16 +109,16 @@ void ModelFacadeBuilder::pooling(int windowWidth, int windowHeight, int rowStep,
     schema.operationRowBasis = rowBasis;
     schema.operationColBasis = colBasis;
 
-    schema.predictTempSize = 0;
+    schema.predictTempSize = batchSize * schema.outputDepth * outputWidth * outputHeight * (windowWidth * windowHeight);
     schema.trainTempSize = 0;
     schema.weightsSize = schema.inputDepth * schema.inputWidth * schema.inputHeight;
     layerInitSizes(&schema, batchSize);
     layers.push_back(schema);
 }
 
-void ModelFacadeBuilder::pooling(int windowSize, int step, int basis) {
+void ModelFacadeBuilder::pooling(int windowSize, int step, int basis, int outputSize) {
     if (step == 0) step = windowSize;
-    this->pooling(windowSize, windowSize, step, step, basis, basis);
+    this->pooling(windowSize, windowSize, step, step, basis, basis, outputSize, outputSize);
 }
 
 void ModelFacadeBuilder::dense(int channels) {

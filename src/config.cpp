@@ -96,6 +96,7 @@ int Config::readItem(FILE* f, const char* module, const char* field) {
 }
 
 int Config::read(const char* filepath) {
+    int ret = 0;
     FILE* f;
     char module[100];
     char temp[1000];
@@ -113,22 +114,24 @@ int Config::read(const char* filepath) {
         if (temp[0] == '[' && temp[sl - 1] == ']') {
             if (sl >= 100) {
                 fprintf(stderr, "模块名太长,配置文件是否写错了?\n");
+                ret = 1;
                 break;
             }
             temp[sl - 1] = '\0';
             strcpy(module, &temp[1]);
             if (beforeModuleCallback) {
-                int ret = (*beforeModuleCallback)(dist, module);
+                ret = (*beforeModuleCallback)(dist, module);
                 if (ret) break;
             }
         } else {
             if (readItem(f, module, temp)) {
                 fprintf(stderr, "没有找到该配置: [%s].%s\n", module, temp);
+                ret = 1;
                 break;
             }
         }
     }
 
     fclose(f);
-    return 0;
+    return ret;
 }

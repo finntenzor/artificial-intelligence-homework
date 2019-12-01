@@ -11,137 +11,86 @@
 //     return (channelIndex * schema->inputHeight + rowIndex) * schema->inputWidth + colIndex;
 // }
 
-// __global__ void layerDevPredictPooling1(layer_schema_t schema, int batchSize) {
-//     // 参数总个数 = operationWidth * operationHeight * inputDepth
-//     double* input = schema.predictInput;
-//     double* args = schema.weights;
+__device__ int layerPoolingBackwardIndexBegin(int index, int basis, int window, int step) {
+    // 对于被除数为负数时计算结果有误，但是由于不访问对应下标的单元，结果是一致的
+    return (index - basis - window + step) / step;
+}
 
-//     int inputRowBegin = (threadIdx.x / schema.operationHeight) * schema.operationHeight;
-//     int inputColBegin = (threadIdx.y / schema.operationWidth) * schema.operationWidth;
-//     int inputRowEnd = inputRowBegin + schema.operationHeight;
-//     int inputColEnd = inputColBegin + schema.operationWidth;
-//     int weightIndex = layerGetPoolingWeightIndex(&schema, blockIdx.y, threadIdx.x, threadIdx.y);
+__device__ int layerPoolingBackwardIndexEnd(int index, int basis, int window, int step) {
+    return (index - basis - 0) / step;
+}
 
-//     int maxCount = 0;
-//     for (int b = 0; b < batchSize; b++) {
-//         int maxRow = inputRowBegin;
-//         int maxCol = inputColBegin;
-//         for (int i = inputRowBegin; i < inputRowEnd; i++) { // 输入行号偏移量
-//             for (int j = inputColBegin; j < inputColEnd; j++) { // 输入列号偏移量
-//                 if (i < 0 || i >= schema.inputHeight || j < 0 || j >= schema.inputWidth) {
-//                     continue;
-//                 }
-//                 int maxIndex = layerGetInputIndex(&schema, b, blockIdx.y, maxRow, maxCol);
-//                 int inputIndex = layerGetInputIndex(&schema, b, blockIdx.y, i, j);
-//                 if (input[inputIndex] > input[maxIndex]) {
-//                     maxRow = i;
-//                     maxCol = j;
-//                 }
-//             }
-//         }
-//         if (maxRow == threadIdx.x && maxCol == threadIdx.y) {
-//             maxCount++;
-//         }
-//     }
-//     args[weightIndex] = maxCount / batchSize;
-// }
-
-// int layerPredictPooling1(layer_schema_t* schema, int batchSize) {
-//     dim3 gridSize(1, schema->inputDepth);
-//     dim3 blockSize(schema->inputHeight, schema->inputWidth);
-//     layerDevPredictPooling1<<<gridSize, blockSize>>>(*schema, batchSize);
-//     return layerIfError(schema->layerIndex);
-// }
-
-// __global__ void layerDevPredictPooling2(layer_schema_t schema) {
-//     // 参数总个数 = operationWidth * operationHeight * inputDepth
-//     double* output = schema.predictOutput;
-//     double* input = schema.predictInput;
-//     double* args = schema.weights;
-//     int outputIndex = layerGetCurrentOutputIndex(&schema);
-
-//     int inputRowBegin = threadIdx.x * schema.operationHeight;
-//     int inputColBegin = threadIdx.y * schema.operationWidth;
-//     int inputRowEnd = inputRowBegin + schema.operationHeight;
-//     int inputColEnd = inputColBegin + schema.operationWidth;
-
-//     double z = 0;
-//     for (int i = inputRowBegin; i < inputRowEnd; i++) { // 输入行号偏移量
-//         for (int j = inputColBegin; j < inputColEnd; j++) { // 输入列号偏移量
-//             if (i < 0 || i >= schema.inputHeight || j < 0 || j >= schema.inputWidth) {
-//                 continue;
-//             }
-//             int inputIndex = layerGetPoolingWeightIndex(&schema, blockIdx.y, i, j);
-//             int weightIndex = layerGetPoolingWeightIndex(&schema, blockIdx.y, i, j);
-//             z += input[inputIndex] * args[weightIndex];
-//         }
-//     }
-//     output[outputIndex] = z;
-// }
-
-// int layerPredictPooling2(layer_schema_t* schema, int batchSize) {
-//     dim3 gridSize(batchSize, schema->outputDepth);
-//     dim3 blockSize(schema->outputHeight, schema->outputWidth);
-//     layerDevPredictPooling2<<<gridSize, blockSize>>>(*schema);
-//     return layerIfError(schema->layerIndex);
-// }
-
-// int layerPredictPooling(layer_schema_t* schema, int batchSize) {
-//     int ret = layerPredictPooling1(schema, batchSize);
-//     return ret || layerPredictPooling2(schema, batchSize);
-// }
-
-__global__ void layerDevPredictPooling1(double* output, double* input,
+__global__ void layerDevPredictPooling1(double* output, double* input, double* temp,
     int windowHeight, int windowWidth,
     int rowStep, int colStep,
     int rowBasis, int colBasis,
     int inputSize, int inputChannelSize, int inputHeight, int inputWidth,
-    int outputSize, int outputChannelSize, int outputHeight, int outputWidth
+    int outputSize, int outputChannelSize, int outputHeight, int outputWidth,
+    int tempSize, int tempChannelSize
 )
 {
     double* inputBase = input + blockIdx.x * inputSize + blockIdx.y * inputChannelSize;
     double* outputBase = output + blockIdx.x * outputSize + blockIdx.y * outputChannelSize;
+    double* tempBase = temp + blockIdx.x * tempSize + blockIdx.y * tempChannelSize;
     int inputRowBegin = threadIdx.x * rowStep + rowBasis;
     int inputColBegin = threadIdx.y * colStep + colBasis;
     int inputRowEnd = inputRowBegin + windowHeight;
     int inputColEnd = inputColBegin + windowWidth;
+    int rowBase = threadIdx.x * windowHeight;
+    int colBase = threadIdx.y * windowWidth;
+    int rowOffset = inputRowBegin;
+    int colOffset = inputColBegin;
 
     double max = inputBase[0];
     for (int i = inputRowBegin; i < inputRowEnd; i++) {
+        if (i < 0 || i >= inputHeight) continue;
         for (int j = inputColBegin; j < inputColEnd; j++) {
-            if (i < 0 || i >= inputHeight || j < 0 || inputWidth) continue;
+            if (j < 0 || j >= inputWidth) continue;
             double curr = inputBase[i * inputWidth + j];
             if (curr > max) {
                 max = curr;
+                rowOffset = i;
+                colOffset = j;
             }
         }
     }
+    for (int i = 0; i < windowHeight; i++) {
+        for (int j = 0; j < windowWidth; j++) {
+            int index = (rowBase + i) * (outputWidth * windowWidth) + colBase + j;
+            temp[index] = 0;
+        }
+    }
+    rowOffset -= inputRowBegin;
+    colOffset -= inputColBegin;
     outputBase[threadIdx.x * outputWidth + threadIdx.y] = max;
+    tempBase[(rowBase + rowOffset) * (outputWidth * windowWidth) + colBase + colOffset] = 1.0 / (windowWidth * windowHeight);
 }
 
 int layerPredictPooling1(layer_schema_t* schema, int batchSize) {
     int inputSize = schema->inputDepth * schema->inputHeight * schema->inputWidth;
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    int tempSize = schema->outputDepth * schema->outputHeight * schema->outputWidth * schema->operationHeight * schema->operationWidth;
     int inputChannelSize = schema->inputHeight * schema->inputWidth;
     int outputChannelSize = schema->outputHeight * schema->outputWidth;
+    int tempChannelSize = schema->outputHeight * schema->outputWidth * schema->operationHeight * schema->operationWidth;
     dim3 gridSize(batchSize, schema->outputDepth); // 输入输出深度应该相等
     dim3 blockSize(schema->outputHeight, schema->outputWidth);
-    layerDevPredictPooling1<<<gridSize, blockSize>>>(schema->predictOutput, schema->predictInput,
+    layerDevPredictPooling1<<<gridSize, blockSize>>>(schema->predictOutput, schema->predictInput, schema->predictTemp,
         schema->operationHeight, schema->operationWidth,
         schema->operationRowStep, schema->operationColStep,
         schema->operationRowBasis, schema->operationColBasis,
         inputSize, inputChannelSize, schema->inputHeight, schema->inputWidth,
-        outputSize, outputChannelSize, schema->outputHeight, schema->outputWidth
+        outputSize, outputChannelSize, schema->outputHeight, schema->outputWidth,
+        tempSize, tempChannelSize
     );
     return layerIfError(schema->layerIndex);
 }
 
 int layerPredictPooling(layer_schema_t* schema, int batchSize) {
     return layerPredictPooling1(schema, batchSize);
-    // return ret || layerPredictPooling2(schema, batchSize);
 }
 
-__global__ void layerDevTrainPooling1(double* trainOutput, double* trainInput, double* input,
+__global__ void layerDevTrainPooling1(double* trainOutput, double* trainInput, double* predictTemp,
     int windowHeight, int windowWidth,
     int rowStep, int colStep,
     int rowBasis, int colBasis,
@@ -149,24 +98,28 @@ __global__ void layerDevTrainPooling1(double* trainOutput, double* trainInput, d
     int outputSize, int outputChannelSize, int outputHeight, int outputWidth
 )
 {
-    // double* inputBase = input + blockIdx.x * inputSize + blockIdx.y * inputChannelSize;
-    // double* outputBase = output + blockIdx.x * outputSize + blockIdx.y * outputChannelSize;
-    int inputRowBegin = threadIdx.x * rowStep + rowBasis - windowHeight + 1;
-    int inputColBegin = threadIdx.y * colStep + colBasis - windowWidth + 1;
-    int inputRowEnd = inputRowBegin + windowHeight;
-    int inputColEnd = inputColBegin + windowWidth;
+    double* trainOutputBase = trainOutput + blockIdx.x * inputSize + blockIdx.y * inputChannelSize;
+    double* trainInputBase = trainInput + blockIdx.x * outputSize + blockIdx.y * outputChannelSize;
 
-    // double max = inputBase[0];
-    // for (int i = inputRowBegin; i < inputRowEnd; i++) {
-    //     for (int j = inputColBegin; j < inputColEnd; j++) {
-    //         if (i < 0 || i >= inputHeight || j < 0 || inputWidth) continue;
-    //         double curr = inputBase[i * inputWidth + j];
-    //         if (curr > max) {
-    //             max = curr;
-    //         }
-    //     }
-    // }
-    // outputBase[threadIdx.x * outputWidth + threadIdx.y] = max;
+    int rowBegin = layerPoolingBackwardIndexBegin(threadIdx.x, rowBasis, windowHeight, rowStep);
+    int rowEnd = layerPoolingBackwardIndexEnd(threadIdx.x, rowBasis, windowHeight, rowStep);
+    int colBegin = layerPoolingBackwardIndexBegin(threadIdx.y, colBasis, windowWidth, colStep);
+    int colEnd = layerPoolingBackwardIndexEnd(threadIdx.y, colBasis, windowWidth, colStep);
+
+    double v = 0;
+    predictTemp += (blockIdx.x * outputSize + blockIdx.y) * windowHeight * windowWidth;
+    for (int i = rowBegin; i <= rowEnd; i++) {
+        if (i < 0 || i >= outputHeight) continue;
+        for (int j = colBegin; j <= colEnd; j++) {
+            if (j < 0 || j >= outputWidth) continue;
+            int rowOffset = threadIdx.x - (i * rowStep + rowBasis);
+            int colOffset = threadIdx.y - (j * colStep + colBasis);
+            double dprev = trainInputBase[i * outputWidth + j];
+            double dtemp = predictTemp[(i * windowHeight + rowOffset) * (outputWidth * windowWidth) + j * windowWidth + colOffset];
+            v += dprev * dtemp;
+        }
+    }
+    trainOutputBase[threadIdx.x * inputWidth + threadIdx.y] = v;
 }
 
 int layeyTrainPooling1(layer_schema_t* schema, int batchSize) {
@@ -176,7 +129,7 @@ int layeyTrainPooling1(layer_schema_t* schema, int batchSize) {
     int outputChannelSize = schema->outputHeight * schema->outputWidth;
     dim3 gridSize(batchSize, schema->inputDepth);
     dim3 blockSize(schema->inputHeight, schema->inputWidth);
-    layerDevTrainPooling1<<<gridSize, blockSize>>>(schema->trainOutput, schema->trainInput, schema->predictInput,
+    layerDevTrainPooling1<<<gridSize, blockSize>>>(schema->trainOutput, schema->trainInput, schema->predictTemp,
         schema->operationHeight, schema->operationWidth,
         schema->operationRowStep, schema->operationColStep,
         schema->operationRowBasis, schema->operationColBasis,

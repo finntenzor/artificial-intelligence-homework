@@ -16,6 +16,20 @@ LabelSet trainLabelSet;
 ImageSet testImageSet;
 LabelSet testLabelSet;
 ModelFacade model;
+LayerFacade layer;
+
+int trainListener(model_schema_t* mem, int batchIndex, int step) {
+    layer.read();
+    if (step == 3) {
+        printf("Train:\n");
+        printMatrixlf(layer.predictInput, 28, 28);
+        printMatrixlf(layer.predictTemp, 56, 56);
+        printMatrixlf(layer.predictOutput, 28, 28);
+        printMatrixlf4(layer.trainInput, 28, 28);
+        printMatrixlf4(layer.trainOutput, 28, 28);
+    }
+    return 0;
+}
 
 int main(int argc, const char* argv[]) {
     cudaError_t cudaStatus;
@@ -46,6 +60,8 @@ int main(int argc, const char* argv[]) {
     model.setStudyRate(config.studyRate);
     model.setAttenuationRate(config.attenuationRate);
     model.setRoundCount(config.roundCount);
+    // model.setTrainListener(trainListener);
+    // layer.setLayerSchema(model.layerAt(1));
 
     ret = ret || trainImageSet.read(config.trainImage);
     ret = ret || trainLabelSet.read(config.trainLabel);
@@ -183,6 +199,7 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.beforeModule(&beforeModule);
     reader.expectLayer(MODULE_MODEL, "Input", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Dense", &readLayer);
+    reader.expectLayer(MODULE_MODEL, "Pooling", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Output", &readLayer);
     return reader.read(configPath);
 }
@@ -216,20 +233,41 @@ int readLayer(void* dist, const char* layerName, const int n, const int argv[]) 
     if (strcmp(layerName, "Input") == 0) {
         if (n != 2) {
             fprintf(stderr, "输入层必须是两个参数, 实际上获得 %d 个参数\n", n);
+            return 1;
         }
         config->builder->input(argv[0], argv[1]);
+    } else if (strcmp(layerName, "Pooling") == 0) {
+        if (n == 1) {
+            config->builder->pooling(argv[0]);
+        } else if (n == 2) {
+            config->builder->pooling(argv[0], argv[1]);
+        } else if (n == 3) {
+            config->builder->pooling(argv[0], argv[1], argv[2]);
+        } else if (n == 4) {
+            config->builder->pooling(argv[0], argv[1], argv[2], argv[3]);
+        } else if (n == 6) {
+            config->builder->pooling(argv[0], argv[1], argv[2], argv[3], argv[4], argv[5]);
+        } else if (n == 8) {
+            config->builder->pooling(argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6], argv[7]);
+        } else {
+            fprintf(stderr, "池化层参数个数应该在以下参数个数之中：1、2、3、4、6、8, 实际上获得 %d 个参数\n", n);
+            return 1;
+        }
     } else if (strcmp(layerName, "Dense") == 0) {
         if (n != 1) {
             fprintf(stderr, "全连接层必须是一个参数, 实际上获得 %d 个参数\n", n);
+            return 1;
         }
         config->builder->dense(argv[0]);
     } else if (strcmp(layerName, "Output") == 0) {
         if (n != 0) {
             fprintf(stderr, "输出层必须是零个参数, 实际上获得 %d 个参数\n", n);
+            return 1;
         }
         config->builder->output();
     } else {
         fprintf(stderr, "未知的层类型 %s\n", layerName);
+        return 1;
     }
     return 0;
 }

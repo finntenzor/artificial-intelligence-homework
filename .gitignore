@@ -5,3 +5,4 @@
 *.zip
 *.model
 *.log
+mnist.*.config

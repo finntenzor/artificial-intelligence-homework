@@ -149,8 +149,8 @@ int ModelFacade::train(unsigned char* input, unsigned char* labels, int totalCou
     return ret;
 }
 
-void ModelFacade::setTrainListener(int (*trainListenr)(model_schema_t* mem, int batchIndex, int step)) {
-    batchCallback = trainListenr;
+void ModelFacade::setTrainListener(int (*trainListener)(model_schema_t* mem, int batchIndex, int step)) {
+    batchCallback = trainListener;
 }
 
 layer_schema_t* ModelFacade::layerAt(int index) {
