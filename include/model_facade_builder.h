@@ -27,7 +27,7 @@ public:
     void dense(int channels);
     void scale();
     void output();
-    void build(ModelFacade* model);
+    int build(ModelFacade* model);
 };
 
 #endif // MODEL_FACADE_BUILDER_H

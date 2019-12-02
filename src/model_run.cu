@@ -219,6 +219,8 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
     ret = modelClearDweights(mem);
     double accuracyRate = 0;
     double loss = 0;
+    int printMod = batchCount / 10;
+    if (printMod < 1) printMod = 1;
 
     // TODO 将ep改为loss判断
     for (int ep = 0; !ret && ep < mem->roundCount; ep++) {
@@ -241,7 +243,7 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
             }
             ret = ret || modelFetchAccuracyRate(mem, &accuracyRate);
             ret = ret || modelFetchLoss(mem, &loss);
-            if (i == 0 && printTrainProcess) {
+            if ((i % printMod == 0) && printTrainProcess) {
                 printf("[%d]当前正确率 = %10.6lf%%, 损失 = %.6lf\n", ep, accuracyRate * 100, loss);
             }
         }

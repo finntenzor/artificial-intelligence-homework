@@ -72,7 +72,10 @@ void ModelFacadeBuilder::convolution(int channels, int kernelWidth, int kernelHe
     schema.operationColBasis = colBasis;
 
     schema.predictTempSize = 0;
-    schema.trainTempSize = 0;
+    schema.trainTempSize = batchSize * (schema.outputDepth * schema.outputWidth * schema.outputHeight);
+#ifdef DEBUG
+    printf("Convolution trainTempSize: %d\n", schema.trainTempSize);
+#endif
     schema.weightsSize = channels * (schema.inputDepth * kernelWidth * kernelHeight + 1);
     layerInitSizes(&schema, batchSize);
     layers.push_back(schema);
@@ -105,6 +108,9 @@ void ModelFacadeBuilder::pooling(int windowWidth, int windowHeight, int rowStep,
     schema.operationColBasis = colBasis;
 
     schema.predictTempSize = batchSize * schema.outputDepth * outputWidth * outputHeight * (windowWidth * windowHeight);
+#ifdef DEBUG
+    printf("Pooling predictTempSize: %d\n", schema.predictTempSize);
+#endif
     schema.trainTempSize = 0;
     schema.weightsSize = schema.inputDepth * schema.inputWidth * schema.inputHeight;
     layerInitSizes(&schema, batchSize);
@@ -205,7 +211,7 @@ void ModelFacadeBuilder::output() {
     layers.push_back(schema);
 }
 
-void ModelFacadeBuilder::build(ModelFacade* model) {
+int ModelFacadeBuilder::build(ModelFacade* model) {
     int n = (int)layers.size();
     model->schemaCount = n;
     model->inputCount = model->maxInputCount = inputCount;
@@ -218,6 +224,9 @@ void ModelFacadeBuilder::build(ModelFacade* model) {
     // 拷贝每一层的结构
     for (int i = 0; i < n; i++) {
         model->schemas[i] = layers[i];
+#ifdef DEBUG
+        printf("[%d] %d x %d x %d\n", i, layers[i].outputDepth, layers[i].outputHeight, layers[i].outputWidth);
+#endif
     }
 
     // 此时每一层结构除指针外均已经正确，可以求得权重大小
@@ -225,5 +234,5 @@ void ModelFacadeBuilder::build(ModelFacade* model) {
     model->hostWeights = NULL;
 
     // 分配完毕后，每一层的指针也已经就位
-    modelAllocDeviceMemory(model);
+    return modelAllocDeviceMemory(model);
 }

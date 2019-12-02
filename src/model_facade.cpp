@@ -90,9 +90,15 @@ void ModelFacade::randomGenerateArgs() {
     for (int k = 0; k < schemaCount; k++) {
         layer_schema_t* schema = &schemas[k];
         int m = schema->weightsSize;
-        double q = sqrt(2.0 / schema->predictInputSize);
-        for (int i = 0; i < m; i++) {
-            w[i] = ((rand() % 1024) / 1024.0 - 0.5) * q;
+        if (schema->type == LAYER_TYPE_CONVOLUTION) {
+            for (int i = 0; i < m; i++) {
+                w[i] = ((rand() % 1024) / 1024.0);
+            }
+        } else {
+            double q = sqrt(2.0 / schema->predictInputSize);
+            for (int i = 0; i < m; i++) {
+                w[i] = ((rand() % 1024) / 1024.0) * q;
+            }
         }
         w += m;
     }
