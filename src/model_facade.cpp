@@ -93,19 +93,12 @@ void ModelFacade::randomGenerateArgs() {
         double q = sqrt(2.0 / schema->predictInputSize);
         if (schema->type == LAYER_TYPE_CONVOLUTION) {
             int ws = schema->inputDepth * schema->operationWidth * schema->operationHeight + 1;
-            printf("ws = %d\n", ws);
             for (int i = 0; i < schema->outputDepth; i++) {
                 w[i * ws] = 0;
                 for (int j = 1; j < ws; j++) {
-                    w[i * ws + j] = 1 -((rand() % 1024) / 1024.0) * q;
-                    // w[i * ws + j] = 0.999;
+                    w[i * ws + j] = ((rand() % 1024) / 1024.0);
                 }
             }
-            // w[0] = 0.0001;
-            // w[1] = 0.54213720;
-            // for (int i = 0; i < m; i++) {
-            //     w[i] = ((rand() % 1024) / 2048.0 + 0.5);
-            // }
         } else {
             for (int i = 0; i < m; i++) {
                 w[i] = ((rand() % 1024) / 1024.0) * q;

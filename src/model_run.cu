@@ -104,6 +104,9 @@ int modelRunBatch(model_schema_t* mem, int offset) {
         case LAYER_TYPE_SCALE:
             ret = layerPredictScale(schema, batchSize);
             break;
+        case LAYER_TYPE_RELU:
+            ret = layerPredictRelu(schema, batchSize);
+            break;
         case LAYER_TYPE_OUTPUT:
             ret = layerPredictOutput(schema, batchSize, output);
             ret = ret || layerCheckOutput(schema, batchSize, output, labels, mem->accuracyRate, mem->loss);
@@ -183,6 +186,9 @@ int modelTrainBatch(model_schema_t* mem, int offset) {
             break;
         case LAYER_TYPE_SCALE:
             ret = layerTrainScale(schema, batchSize);
+            break;
+        case LAYER_TYPE_RELU:
+            ret = layerTrainRelu(schema, batchSize);
             break;
         case LAYER_TYPE_OUTPUT:
             ret = layerTrainOutput(schema, batchSize, labels);

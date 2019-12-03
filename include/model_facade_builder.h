@@ -26,6 +26,7 @@ public:
     void pooling(int windowSize, int step = 0, int basis = 0, int outputSize = 0);
     void dense(int channels);
     void scale();
+    void relu();
     void output();
     int build(ModelFacade* model);
 };

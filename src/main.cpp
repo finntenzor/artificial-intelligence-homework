@@ -39,11 +39,20 @@ void printPredictInput(LayerFacade& layer, int depth = 0) {
     printMatrixlf8(layer.predictInput + depth * size, layer.schema->inputWidth, layer.schema->inputHeight);
 }
 
+void printTrainOuput(LayerFacade& layer, int depth = 0) {
+    int size = layer.schema->inputWidth * layer.schema->inputHeight;
+    printMatrixlf8(layer.trainOutput + depth * size, layer.schema->inputWidth, layer.schema->inputHeight);
+}
+
 void printWeights(LayerFacade& layer, int depth = 0) {
     if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
         int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
         printf("b[%d] = %.8lf, w[%d] = \n", depth, layer.weights[depth * size], depth);
-        printMatrixlf8(layer.weights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);;
+        printMatrixlf8(layer.weights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);
+    } else if (layer.schema->type == LAYER_TYPE_DENSE) {
+        int size = layer.schema->inputDepth * layer.schema->inputWidth * layer.schema->inputHeight + 1;
+        printf("b[%d] = %.8lf, w[%d] = \n", depth, layer.weights[depth * size], depth);
+        printMatrixlf8(layer.weights + depth * size + 1, size - 1, 1);
     }
 }
 
@@ -51,47 +60,71 @@ void printDweights(LayerFacade& layer, int depth = 0) {
     if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
         int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
         printf("db[%d] = %.8lf, dw[%d] = \n", depth, layer.dweights[depth * size], depth);
-        printMatrixlf8(layer.dweights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);;
+        printMatrixlf8(layer.dweights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);
+    } else if (layer.schema->type == LAYER_TYPE_DENSE) {
+        int size = layer.schema->inputDepth * layer.schema->inputWidth * layer.schema->inputHeight + 1;
+        printf("db[%d] = %.8lf, dw[%d] = \n", depth, layer.dweights[depth * size], depth);
+        printMatrixlf8(layer.dweights + depth * size + 1, size - 1, 1);
     }
 }
 
 void printConvolutionLayer(LayerFacade& layer) {
+    layer.read();
     printPredictInput(layer);
     printWeights(layer);
     printWeights(layer, 1);
     printPredictOutput(layer);
     printPredictOutput(layer, 1);
+    printDweights(layer);
+    printDweights(layer, 1);
+}
+
+void printOutputY(LayerFacade& layer, int batchSize) {
+    layer_schema_t* schema = layer.schema;
+    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    int offset = batchSize * 1 + batchSize * 1 + batchSize * outputSize;
+    printMatrixlf8(layer.predictTemp + offset, outputSize, 1);
 }
 
 int trainListener(model_schema_t* mem, int batchIndex, int step) {
-    // layers[1].read();
-    if (step == 1) {
-        // for (int i = 1; i <= 7; i++) {
-        //     layers[i].read();
-        //     printPredictOutput(layers[i]);
-        // }
+    if (step == 2) {
+        printf("[After Train, Before apply]\n");
+        printf("Layer 2\n");
+        printConvolutionLayer(layers[2]);
+        printf("Layer 4\n");
+        printConvolutionLayer(layers[4]);
+        // layers[1].read();
+        // printPredictOutput(layers[1]);
 
-        layers[1].read();
-        layers[3].read();
-        printPredictInput(layers[3]);
-        printWeights(layers[3]);
-        printWeights(layers[3], 1);
-        printPredictOutput(layers[3]);
-        printPredictOutput(layers[3], 1);
+        // layers[3].read();
+        // printPredictOutput(layers[3]);
 
-        // layer_schema_t* layer1Schema = layers[2].schema;
-        // int osc = layer1Schema->outputHeight * layer1Schema->outputWidth;;
-        // int os = layer1Schema->outputDepth * layer1Schema->outputHeight * layer1Schema->outputWidth;
-        // int ws = layer1Schema->inputDepth * layer1Schema->operationHeight * layer1Schema->operationWidth + 1;
-        // printf("After Run ws = %d:\n", ws);
-        // printf("b = %.8lf, w = \n", (layers[2].weights)[0]);
-        // printMatrixlf8(layers[2].weights + 1, layers[2].schema->operationHeight, layers[2].schema->operationWidth);
-        // printMatrixlf8(layers[2].predictInput, layers[2].schema->inputHeight, layers[2].schema->inputWidth);
-        // printMatrixlf8(layers[2].predictOutput, layers[2].schema->outputHeight, layers[2].schema->outputWidth);
-    } else if (step == 3 && batchIndex == 0) {
-        // printf("After Train:\n");
-        // printMatrixlf8(layers[2].trainInput, layers[2].schema->outputHeight, layers[2].schema->outputWidth);
-        // printMatrixlf8(layers[2].trainOutput, layers[2].schema->inputHeight, layers[2].schema->inputWidth);
+        // layers[5].read();
+        // printPredictOutput(layers[5]);
+
+        // printf("Layer 8 = \n");
+        // layers[8].read();
+        // printOutputY(layers[8], config.batchSize);
+        // printMatrixlf8(layers[8].trainOutput, 10, 1);
+
+        // printf("Layer 7 = \n");
+        // layers[7].read();
+        // printMatrixlf8(layers[7].predictInput, 500, 1);
+        // printWeights(layers[7]);
+        // printDweights(layers[7]);
+        // printMatrixlf8(layers[7].trainOutput, 10, 1);
+
+        // printf("Layer 6 = \n");
+        // layers[6].read();
+        // printMatrixlf8(layers[6].trainOutput, 10, 1);
+
+        // printf("Layer 5 = \n");
+        // layers[5].read();
+        // printTrainOuput(layers[5]);
+
+        // printf("Layer 3 = \n");
+        // layers[3].read();
+        // printTrainOuput(layers[3]);
     }
     return 0;
 }
@@ -272,6 +305,7 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.expectLayer(MODULE_MODEL, "Convolution", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Pooling", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Scale", &readLayer);
+    reader.expectLayer(MODULE_MODEL, "Relu", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Output", &readLayer);
     return reader.read(configPath);
 }
@@ -352,6 +386,12 @@ int readLayer(void* dist, const char* layerName, const int n, const int argv[]) 
             return 1;
         }
         config->builder->scale();
+    } else if (strcmp(layerName, "Relu") == 0) {
+        if (n != 0) {
+            fprintf(stderr, "线性整流层必须是零个参数, 实际上获得 %d 个参数\n", n);
+            return 1;
+        }
+        config->builder->relu();
     } else if (strcmp(layerName, "Output") == 0) {
         if (n != 0) {
             fprintf(stderr, "输出层必须是零个参数, 实际上获得 %d 个参数\n", n);

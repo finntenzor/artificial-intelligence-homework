@@ -176,6 +176,32 @@ void ModelFacadeBuilder::scale() {
     layers.push_back(schema);
 }
 
+void ModelFacadeBuilder::relu() {
+    layer_schema_t schema;
+    int index = layers.size();
+
+    schema.layerIndex = index;
+    schema.type = LAYER_TYPE_RELU;
+
+    layerConcatInputSize(&schema, &layers[index - 1]);
+    schema.outputWidth = schema.inputWidth;
+    schema.outputHeight = schema.inputHeight;
+    schema.outputDepth = schema.inputDepth;
+
+    schema.operationWidth = 0;
+    schema.operationHeight = 0;
+    schema.operationRowStep = 0;
+    schema.operationColStep = 0;
+    schema.operationRowBasis = 0;
+    schema.operationColBasis = 0;
+
+    schema.predictTempSize = 0;
+    schema.trainTempSize = 0;
+    schema.weightsSize = 0;
+    layerInitSizes(&schema, batchSize);
+    layers.push_back(schema);
+}
+
 void ModelFacadeBuilder::output() {
     layer_schema_t schema;
     layer_schema_t* lastSchema;

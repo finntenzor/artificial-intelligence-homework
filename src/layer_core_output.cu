@@ -150,7 +150,7 @@ int layerCheckOutput(layer_schema_t* schema, int batchSize, unsigned char* outpu
 
 __global__ void layerDevTrainOutput(double* y, double* output, unsigned char* labels, int outputSize) {
     int index = blockIdx.x * outputSize + threadIdx.x;
-    double y_ = labels[blockIdx.x] == threadIdx.x ? 1 : 0;
+    double y_ = (labels[blockIdx.x] == threadIdx.x) ? 1 : 0;
     output[index] = y[index] - y_;
     // printf("layerDevTrainOutput blockIdx.x = %d, threadIdx.x = %d, output at %p, index = %d, label = %d, y = %lf, output = %lf\n", blockIdx.x, threadIdx.x, output, index, labels[blockIdx.x], y[index], output[index]);
 }
