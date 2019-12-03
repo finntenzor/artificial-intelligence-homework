@@ -29,7 +29,7 @@ __global__ void layerDevPredictDense(double* output, double* input, double* weig
         // }
     }
     // relu激活函数
-    output[outputIndex] = (z > 0 ? z : 0);
+    output[outputIndex] = (z > 0 ? z : z * 0.01);
     // printf("output[%d] = %lf (%lf)\n", outputIndex, output[outputIndex], z);
 }
 
@@ -42,15 +42,14 @@ int layerPredictDense(layer_schema_t* schema, int batchSize) {
     return layerIfError(schema->layerIndex);
 }
 
-// 求relu的导数，并更新至本层训练输入中去（修改导数）
-// 由于只会使用一次，因此不会引起冲突，同时节约内存
+// 求relu的导数，并保存至临时变量
 __global__ void layerDevTrainDense1(double* trainTemp, double* trainInput, double* predictOutput, int inputSize, int outputSize) {
     int index = blockIdx.x * outputSize + threadIdx.x;
     // relu导数为0或者1 乘以1不变 乘以0变为0 等价于if语句
     if (predictOutput[index] > 0) {
         trainTemp[index] = trainInput[index];
     } else {
-        trainTemp[index] = 0;
+        trainTemp[index] = trainInput[index] * 0.01;
     }
 }
 

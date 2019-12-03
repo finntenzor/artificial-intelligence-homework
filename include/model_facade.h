@@ -31,6 +31,7 @@ public:
     void setStudyRate(double studyRate);
     void setAttenuationRate(double attenuationRate);
     void setRoundCount(int roundCount);
+    void printSchema();
 };
 
 #endif // MODEL_FACADE_H

@@ -90,12 +90,23 @@ void ModelFacade::randomGenerateArgs() {
     for (int k = 0; k < schemaCount; k++) {
         layer_schema_t* schema = &schemas[k];
         int m = schema->weightsSize;
+        double q = sqrt(2.0 / schema->predictInputSize);
         if (schema->type == LAYER_TYPE_CONVOLUTION) {
-            for (int i = 0; i < m; i++) {
-                w[i] = ((rand() % 1024) / 1024.0);
+            int ws = schema->inputDepth * schema->operationWidth * schema->operationHeight + 1;
+            printf("ws = %d\n", ws);
+            for (int i = 0; i < schema->outputDepth; i++) {
+                w[i * ws] = 0;
+                for (int j = 1; j < ws; j++) {
+                    w[i * ws + j] = 1 -((rand() % 1024) / 1024.0) * q;
+                    // w[i * ws + j] = 0.999;
+                }
             }
+            // w[0] = 0.0001;
+            // w[1] = 0.54213720;
+            // for (int i = 0; i < m; i++) {
+            //     w[i] = ((rand() % 1024) / 2048.0 + 0.5);
+            // }
         } else {
-            double q = sqrt(2.0 / schema->predictInputSize);
             for (int i = 0; i < m; i++) {
                 w[i] = ((rand() % 1024) / 1024.0) * q;
             }
@@ -177,4 +188,14 @@ void ModelFacade::setAttenuationRate(double attenuationRate) {
 
 void ModelFacade::setRoundCount(int roundCount) {
     this->roundCount = roundCount;
+}
+
+void ModelFacade::printSchema() {
+    for (int i = 0; i < schemaCount; i++) {
+        layer_schema_t* schema = &schemas[i];
+        printf("[%d](%d, %d, %d) => (%d, %d, %d)\n", i,
+            schema->inputDepth, schema->inputHeight, schema->inputWidth,
+            schema->outputDepth, schema->outputHeight, schema->outputWidth
+        );
+    }
 }

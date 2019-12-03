@@ -16,17 +16,82 @@ LabelSet trainLabelSet;
 ImageSet testImageSet;
 LabelSet testLabelSet;
 ModelFacade model;
-LayerFacade layer;
+LayerFacade layers[8];
+
+void printPredictOutput(LayerFacade& layer, int depth = 0) {
+    if (layer.schema->type == LAYER_TYPE_DENSE) {
+        int d = layer.schema->outputDepth;
+        d = d < 20 ? d : 20;
+        printMatrixlf8(layer.predictOutput, d, 1);
+    } else if (layer.schema->type == LAYER_TYPE_OUTPUT) {
+        int outputSize = layer.schema->outputDepth * layer.schema->outputHeight * layer.schema->outputWidth;
+        int batchSize = 100;
+        double* y = layer.predictTemp + batchSize * 1 + batchSize * 1 + batchSize * outputSize;
+        printMatrixlf8(y, outputSize, 1);
+    } else if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
+        int size = layer.schema->outputWidth * layer.schema->outputHeight;
+        printMatrixlf8(layer.predictOutput + depth * size, layer.schema->outputWidth, layer.schema->outputHeight);
+    }
+}
+
+void printPredictInput(LayerFacade& layer, int depth = 0) {
+    int size = layer.schema->inputWidth * layer.schema->inputHeight;
+    printMatrixlf8(layer.predictInput + depth * size, layer.schema->inputWidth, layer.schema->inputHeight);
+}
+
+void printWeights(LayerFacade& layer, int depth = 0) {
+    if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
+        int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
+        printf("b[%d] = %.8lf, w[%d] = \n", depth, layer.weights[depth * size], depth);
+        printMatrixlf8(layer.weights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);;
+    }
+}
+
+void printDweights(LayerFacade& layer, int depth = 0) {
+    if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
+        int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
+        printf("db[%d] = %.8lf, dw[%d] = \n", depth, layer.dweights[depth * size], depth);
+        printMatrixlf8(layer.dweights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);;
+    }
+}
+
+void printConvolutionLayer(LayerFacade& layer) {
+    printPredictInput(layer);
+    printWeights(layer);
+    printWeights(layer, 1);
+    printPredictOutput(layer);
+    printPredictOutput(layer, 1);
+}
 
 int trainListener(model_schema_t* mem, int batchIndex, int step) {
-    layer.read();
-    if (step == 3) {
-        printf("Train:\n");
-        printMatrixlf(layer.predictInput, 28, 28);
-        printMatrixlf(layer.predictTemp, 56, 56);
-        printMatrixlf(layer.predictOutput, 28, 28);
-        printMatrixlf4(layer.trainInput, 28, 28);
-        printMatrixlf4(layer.trainOutput, 28, 28);
+    // layers[1].read();
+    if (step == 1) {
+        // for (int i = 1; i <= 7; i++) {
+        //     layers[i].read();
+        //     printPredictOutput(layers[i]);
+        // }
+
+        layers[1].read();
+        layers[3].read();
+        printPredictInput(layers[3]);
+        printWeights(layers[3]);
+        printWeights(layers[3], 1);
+        printPredictOutput(layers[3]);
+        printPredictOutput(layers[3], 1);
+
+        // layer_schema_t* layer1Schema = layers[2].schema;
+        // int osc = layer1Schema->outputHeight * layer1Schema->outputWidth;;
+        // int os = layer1Schema->outputDepth * layer1Schema->outputHeight * layer1Schema->outputWidth;
+        // int ws = layer1Schema->inputDepth * layer1Schema->operationHeight * layer1Schema->operationWidth + 1;
+        // printf("After Run ws = %d:\n", ws);
+        // printf("b = %.8lf, w = \n", (layers[2].weights)[0]);
+        // printMatrixlf8(layers[2].weights + 1, layers[2].schema->operationHeight, layers[2].schema->operationWidth);
+        // printMatrixlf8(layers[2].predictInput, layers[2].schema->inputHeight, layers[2].schema->inputWidth);
+        // printMatrixlf8(layers[2].predictOutput, layers[2].schema->outputHeight, layers[2].schema->outputWidth);
+    } else if (step == 3 && batchIndex == 0) {
+        // printf("After Train:\n");
+        // printMatrixlf8(layers[2].trainInput, layers[2].schema->outputHeight, layers[2].schema->outputWidth);
+        // printMatrixlf8(layers[2].trainOutput, layers[2].schema->inputHeight, layers[2].schema->inputWidth);
     }
     return 0;
 }
@@ -56,12 +121,15 @@ int main(int argc, const char* argv[]) {
         return -1;
     }
 
-    builder.build(&model);
+    if (builder.build(&model)) {
+        return -1;
+    }
     model.setStudyRate(config.studyRate);
     model.setAttenuationRate(config.attenuationRate);
     model.setRoundCount(config.roundCount);
     // model.setTrainListener(trainListener);
-    // layer.setLayerSchema(model.layerAt(1));
+    // for (int i = 0; i < 8; i++) layers[i].setLayerSchema(model.layerAt(i));
+    model.printSchema();
 
     ret = ret || trainImageSet.read(config.trainImage);
     ret = ret || trainLabelSet.read(config.trainLabel);
@@ -70,6 +138,8 @@ int main(int argc, const char* argv[]) {
     if (ret) {
         return -1;
     }
+
+    printMatrixu(trainLabelSet.labels, 5, 5);
 
     if (config.printMemoryUsed) {
         int memory = model.getTotalMemoryUsed();
@@ -201,6 +271,7 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.expectLayer(MODULE_MODEL, "Dense", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Convolution", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Pooling", &readLayer);
+    reader.expectLayer(MODULE_MODEL, "Scale", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Output", &readLayer);
     return reader.read(configPath);
 }
@@ -275,6 +346,12 @@ int readLayer(void* dist, const char* layerName, const int n, const int argv[]) 
             return 1;
         }
         config->builder->dense(argv[0]);
+    } else if (strcmp(layerName, "Scale") == 0) {
+        if (n != 0) {
+            fprintf(stderr, "缩放层必须是零个参数, 实际上获得 %d 个参数\n", n);
+            return 1;
+        }
+        config->builder->scale();
     } else if (strcmp(layerName, "Output") == 0) {
         if (n != 0) {
             fprintf(stderr, "输出层必须是零个参数, 实际上获得 %d 个参数\n", n);

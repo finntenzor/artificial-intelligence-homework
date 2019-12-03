@@ -51,6 +51,7 @@ __global__ void layerDevPredictPooling1(double* output, double* input, double* t
     for (int i = 0; i < windowHeight; i++) {
         for (int j = 0; j < windowWidth; j++) {
             int index = (rowBase + i) * (outputWidth * windowWidth) + colBase + j;
+            // temp[index] = 1.0 / (windowWidth * windowHeight);
             temp[index] = 0;
         }
     }
@@ -58,6 +59,7 @@ __global__ void layerDevPredictPooling1(double* output, double* input, double* t
     colOffset -= inputColBegin;
     outputBase[threadIdx.x * outputWidth + threadIdx.y] = max;
     tempBase[(rowBase + rowOffset) * (outputWidth * windowWidth) + colBase + colOffset] = 1.0 / (windowWidth * windowHeight);
+    // tempBase[(rowBase + rowOffset) * (outputWidth * windowWidth) + colBase + colOffset] = 1.0;
 }
 
 int layerPredictPooling1(layer_schema_t* schema, int batchSize) {
