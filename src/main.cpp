@@ -79,6 +79,45 @@ void printConvolutionLayer(LayerFacade& layer) {
     printDweights(layer, 1);
 }
 
+void print3DArray(double* dist, int width, int height, int depth) {
+    for (int k = 0; k < depth; k++) {
+        printf("----------%d----------\n", k);
+        for (int i = 0; i < height; i++) {
+            for (int j = 0; j < width; j++) {
+                int index = (k * height + i) * width + j;
+                printf("%.8lf ", dist[index]);
+            }
+            printf("\n");
+        }
+    }
+}
+
+void printWholeConvolutionLayer(LayerFacade& layer, int m = 0) {
+    layer.read();
+    layer_schema_t* schema = layer.schema;
+    int inputSize = schema->inputDepth * schema->inputHeight * schema->inputWidth;
+    int weightsSize = schema->inputDepth * schema->operationWidth * schema->operationWidth + 1;
+    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
+    printf("PredictInput:\n");
+    print3DArray(layer.predictInput + m * inputSize, schema->inputWidth, schema->inputHeight, schema->inputDepth);
+    for (int i = 0; i < schema->outputDepth; i++) {
+        double* kernel = layer.weights + weightsSize * i;
+        printf("Kernel %d, b = %.8lf, w = \n", i, kernel[0]);
+        print3DArray(kernel + 1, schema->operationWidth, schema->operationHeight, schema->inputDepth);
+    }
+    printf("PredictOutput:\n");
+    print3DArray(layer.predictOutput + m * outputSize, schema->outputWidth, schema->outputHeight, schema->outputDepth);
+    printf("TrainInput:\n");
+    print3DArray(layer.trainInput + m * outputSize, schema->outputWidth, schema->outputHeight, schema->outputDepth);
+    for (int i = 0; i < schema->outputDepth; i++) {
+        double* kernel = layer.dweights + weightsSize * i;
+        printf("Kernel %d, db = %.8lf, dw = \n", i, kernel[0]);
+        print3DArray(kernel + 1, schema->operationWidth, schema->operationHeight, schema->inputDepth);
+    }
+    printf("TrainOutput:\n");
+    print3DArray(layer.trainOutput + m * inputSize, schema->inputWidth, schema->inputHeight, schema->inputDepth);
+}
+
 void printOutputY(LayerFacade& layer, int batchSize) {
     layer_schema_t* schema = layer.schema;
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
@@ -89,10 +128,11 @@ void printOutputY(LayerFacade& layer, int batchSize) {
 int trainListener(model_schema_t* mem, int batchIndex, int step) {
     if (step == 2) {
         printf("[After Train, Before apply]\n");
-        printf("Layer 2\n");
-        printConvolutionLayer(layers[2]);
-        printf("Layer 4\n");
-        printConvolutionLayer(layers[4]);
+        printWholeConvolutionLayer(layers[3]);
+        // printf("Layer 2\n");
+        // printConvolutionLayer(layers[2]);
+        // printf("Layer 4\n");
+        // printConvolutionLayer(layers[4]);
         // layers[1].read();
         // printPredictOutput(layers[1]);
 
