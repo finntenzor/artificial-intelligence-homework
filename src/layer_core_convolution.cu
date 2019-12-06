@@ -93,9 +93,9 @@ __global__ void layerDevTrainConvolution1(double* trainOutput, double* trainInpu
     double v = 0;
     for (int k = 0; k < outputChannels; k++) {
         double* trainInputBase = trainInputBaseBase + k * outputChannelSize;
-        double* w = weights + k * weightsSize + 1;
-        for (int i = rowBegin; i < rowEnd; i++) {
-            for (int j = colBegin; j < colEnd; j++) {
+        double* w = weights + k * weightsSize + 1 + blockIdx.y * kernelHeight * kernelWidth;
+        for (int i = rowBegin; i <= rowEnd; i++) {
+            for (int j = colBegin; j <= colEnd; j++) {
                 int rowOffset = threadIdx.x - (i * rowStep + rowBasis);
                 int colOffset = threadIdx.y - (j * colStep + colBasis);
                 double dprev = trainInputBase[i * outputWidth + j];
