@@ -16,11 +16,14 @@ typedef struct model_schema {
     double* trainValues; // 每一层的训练输入输出
     double* trainTemps; // 每一层的训练中间变量
     double* weights; // 每一层的训练权重
-    double* dweights; // 每一层的训练权重变化量
+    double* dweights; // 每一层的训练权重的导数
+    double* mweights; // m
+    double* vweights; // v
+    // double* otherArgs; // 其他参数 准确率、损失、beta1、beta2、t
     double* accuracyRate; // 准确度
     double* loss; // 损失
     double studyRate; // 学习率
-    double attenuationRate; // 学习率衰减率
+    double attenuationRate; // 学习率衰减率<废弃>
     int roundCount; // 学习多少轮
 } model_schema_t;
 

@@ -74,10 +74,11 @@ __global__ void layerDevTrainDense2(double* dweights, double* predictInput, doub
             + blockIdx.x; // 只取当前通道的导数
         value += trainInput[trainInputIndex] * predictInput[i * inputSize + xIndex]; // 乘以w对应位置的x
     }
-    value /= inputRange * batchSize;
-    if (value > 1 || value < -1) {
-        printf("Dense:Warnning at (%d, %d, %d) %.16lf\n", blockIdx.x, threadIdx.x, threadIdx.y, value);
-    }
+    // value /= inputRange * batchSize;
+    value /= batchSize;
+    // if (value > 1 || value < -1) {
+    //     printf("Dense:Warnning at (%d, %d, %d) %.16lf\n", blockIdx.x, threadIdx.x, threadIdx.y, value);
+    // }
     dweights[dweightsIndex] = value;
 }
 
@@ -100,7 +101,8 @@ __global__ void layerDevTrainDense3(double* dweights, double* trainInput, int ba
             + blockIdx.x; // 只取当前通道的导数
         value += trainInput[trainInputIndex]; // 由于b是常数 对b的导数等于1 直接把上一层导数求和即可
     }
-    value /= inputRange * batchSize;
+    // value /= inputRange * batchSize;
+    value /= batchSize;
     dweights[dweightsIndex] = value;
 }
 

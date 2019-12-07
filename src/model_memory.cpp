@@ -220,7 +220,9 @@ int modelAllocDeviceMemory(model_schema_t* mem) {
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->trainValues, modelGetTrainValuesSize(mem) * sizeof(double), "模型训练输入输出")) return 1;
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->trainTemps, modelGetTrainTempSize(mem) * sizeof(double), "模型训练中间变量")) return 1;
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->weights, modelGetWeightsSize(mem) * sizeof(double), "模型权重")) return 1;
-    if (modelAllocDeviceMemoryFor(mem, (void**)&mem->dweights, modelGetDweightsSize(mem) * sizeof(double), "模型权重变化量")) return 1;
+    if (modelAllocDeviceMemoryFor(mem, (void**)&mem->dweights, modelGetDweightsSize(mem) * sizeof(double), "模型权重变化量g")) return 1;
+    if (modelAllocDeviceMemoryFor(mem, (void**)&mem->mweights, modelGetDweightsSize(mem) * sizeof(double), "模型权重变化量m")) return 1;
+    if (modelAllocDeviceMemoryFor(mem, (void**)&mem->vweights, modelGetDweightsSize(mem) * sizeof(double), "模型权重变化量v")) return 1;
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->accuracyRate, 1 * sizeof(double), "准确率")) return 1;
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->loss, 1 * sizeof(double), "损失")) return 1;
 

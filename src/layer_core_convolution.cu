@@ -153,10 +153,11 @@ __global__ void layerDevTrainConvolution2(double* dweights, double* trainInput, 
             }
         }
     }
-    v /= inputRange * batchSize;
-    if (v > 1 || v < -1) {
-        printf("Con:Warnning at (%d, %d, %d) %.16lf\n", blockIdx.x, threadIdx.x, threadIdx.y, v);
-    }
+    // v /= inputRange * batchSize;
+    v /= batchSize;
+    // if (v > 1 || v < -1) {
+    //     printf("Con:Warnning at (%d, %d, %d) %.16lf\n", blockIdx.x, threadIdx.x, threadIdx.y, v);
+    // }
     wBase[(blockIdx.y * blockDim.x + threadIdx.x) * blockDim.y + threadIdx.y] = v;
 }
 
@@ -194,7 +195,8 @@ __global__ void layerDevTrainConvolution3(double* dweights, double* trainInput,
             }
         }
     }
-    v /= inputRange * batchSize;
+    // v /= inputRange * batchSize;
+    v /= batchSize;
     *bBase = v;
 }
 

@@ -127,8 +127,12 @@ void printOutputY(LayerFacade& layer, int batchSize) {
 
 int trainListener(model_schema_t* mem, int batchIndex, int step) {
     if (step == 2) {
-        printf("[After Train, Before apply]\n");
-        printWholeConvolutionLayer(layers[3]);
+        printf("[After Train, Before apply m=0]\n");
+        printWholeConvolutionLayer(layers[1]), 0;
+        printWholeConvolutionLayer(layers[3]), 0;
+        // printf("[After Train, Before apply m=1]\n");
+        // printWholeConvolutionLayer(layers[3], 1);
+        // return 1;
         // printf("Layer 2\n");
         // printConvolutionLayer(layers[2]);
         // printf("Layer 4\n");
