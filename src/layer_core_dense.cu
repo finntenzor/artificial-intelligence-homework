@@ -36,7 +36,7 @@ int layerPredictDense(layer_schema_t* schema, int batchSize) {
 }
 
 // 计算前一层的导数
-__global__ void layerDevTrainDense1(double* trainOutput, double* weights, double* trainInput, int outputSize, int weightsSize, double inputRange) {
+__global__ void layerDevTrainDense1(double* trainOutput, double* weights, double* trainInput, int outputSize, int weightsSize) {
     int xIndex = blockIdx.y * blockDim.x + threadIdx.x;
     int trainOutputIndex = (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
     int trainInputBeginIndex = blockIdx.x * outputSize;
@@ -58,12 +58,12 @@ int layerTrainDense1(layer_schema_t* schema, int batchSize) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     dim3 gridSize(batchSize, schema->inputDepth);
     dim3 blockSize(schema->inputHeight * schema->inputWidth);
-    layerDevTrainDense1<<<gridSize, blockSize>>>(schema->trainOutput, schema->weights, schema->trainInput, outputSize, weightsSize, schema->inputRange);
+    layerDevTrainDense1<<<gridSize, blockSize>>>(schema->trainOutput, schema->weights, schema->trainInput, outputSize, weightsSize);
     return layerIfError(schema->layerIndex);
 }
 
 // 计算w变化量
-__global__ void layerDevTrainDense2(double* dweights, double* predictInput, double* trainInput, int batchSize, int inputSize, int outputSize, double inputRange) {
+__global__ void layerDevTrainDense2(double* dweights, double* predictInput, double* trainInput, int batchSize, int inputSize, int outputSize) {
     int xIndex = blockIdx.y * blockDim.x + threadIdx.x;
     int dweightsIndex = blockIdx.x * (inputSize + 1) // 参数页下标起始位置
         + 1 + xIndex; // 1个偏置 再加w的位置
@@ -74,11 +74,7 @@ __global__ void layerDevTrainDense2(double* dweights, double* predictInput, doub
             + blockIdx.x; // 只取当前通道的导数
         value += trainInput[trainInputIndex] * predictInput[i * inputSize + xIndex]; // 乘以w对应位置的x
     }
-    // value /= inputRange * batchSize;
     value /= batchSize;
-    // if (value > 1 || value < -1) {
-    //     printf("Dense:Warnning at (%d, %d, %d) %.16lf\n", blockIdx.x, threadIdx.x, threadIdx.y, value);
-    // }
     dweights[dweightsIndex] = value;
 }
 
@@ -87,12 +83,12 @@ int layerTrainDense2(layer_schema_t* schema, int batchSize) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     dim3 gridSize(outputSize, schema->inputDepth);
     dim3 blockSize(schema->inputHeight * schema->inputWidth);
-    layerDevTrainDense2<<<gridSize, blockSize>>>(schema->dweights, schema->predictInput, schema->trainInput, batchSize, inputSize, outputSize, schema->inputRange);
+    layerDevTrainDense2<<<gridSize, blockSize>>>(schema->dweights, schema->predictInput, schema->trainInput, batchSize, inputSize, outputSize);
     return layerIfError(schema->layerIndex);
 }
 
 // 计算b变化量
-__global__ void layerDevTrainDense3(double* dweights, double* trainInput, int batchSize, int inputSize, int outputSize, double inputRange) {
+__global__ void layerDevTrainDense3(double* dweights, double* trainInput, int batchSize, int inputSize, int outputSize) {
     int dweightsIndex = blockIdx.x * (inputSize + 1); // 参数页下标起始位置 下标以偏置开始，加0
     double value = 0;
     for (int i = 0; i < batchSize; i++) {
@@ -101,7 +97,6 @@ __global__ void layerDevTrainDense3(double* dweights, double* trainInput, int ba
             + blockIdx.x; // 只取当前通道的导数
         value += trainInput[trainInputIndex]; // 由于b是常数 对b的导数等于1 直接把上一层导数求和即可
     }
-    // value /= inputRange * batchSize;
     value /= batchSize;
     dweights[dweightsIndex] = value;
 }
@@ -111,7 +106,7 @@ int layerTrainDense3(layer_schema_t* schema, int batchSize) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     dim3 gridSize(outputSize); // 通道数
     dim3 blockSize(1);
-    layerDevTrainDense3<<<gridSize, blockSize>>>(schema->dweights, schema->trainInput, batchSize, inputSize, outputSize, schema->inputRange);
+    layerDevTrainDense3<<<gridSize, blockSize>>>(schema->dweights, schema->trainInput, batchSize, inputSize, outputSize);
     return layerIfError(schema->layerIndex);
 }
 

@@ -73,9 +73,6 @@ int layerPredictOutput3(layer_schema_t* schema, int batchSize, double* expx, dou
 __global__ void layerDevPredictOutput4(double* expx, double* sumex, double* y, int outputSize) {
     int index = blockIdx.x * outputSize + threadIdx.x;
     // y等于每个exp(x-a)除以sum(exp(x-a))
-    if (sumex[blockIdx.x] == 0) {
-        printf("layerDevPredictOutput4 ZERO: blockIdx.x = %d, threadIdx.x = %d, index = %d\n", blockIdx.x, threadIdx.x, index);
-    }
     y[index] = expx[index] / sumex[blockIdx.x];
 }
 
@@ -152,7 +149,6 @@ __global__ void layerDevTrainOutput(double* y, double* output, unsigned char* la
     int index = blockIdx.x * outputSize + threadIdx.x;
     double y_ = (labels[blockIdx.x] == threadIdx.x) ? 1 : 0;
     output[index] = y[index] - y_;
-    // printf("layerDevTrainOutput blockIdx.x = %d, threadIdx.x = %d, output at %p, index = %d, label = %d, y = %lf, output = %lf\n", blockIdx.x, threadIdx.x, output, index, labels[blockIdx.x], y[index], output[index]);
 }
 
 int layerTrainOutput(layer_schema_t* schema, int batchSize, unsigned char* labels) {

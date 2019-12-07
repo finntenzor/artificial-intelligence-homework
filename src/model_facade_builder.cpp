@@ -40,9 +40,6 @@ void ModelFacadeBuilder::input(int width, int height) {
     schema.operationRowBasis = 0;
     schema.operationColBasis = 0;
 
-    schema.inputRange = 255.0;
-    schema.outputRange = 1.0;
-
     schema.predictTempSize = 0;
     schema.trainTempSize = 0;
     schema.weightsSize = 0;
@@ -74,14 +71,8 @@ void ModelFacadeBuilder::convolution(int channels, int kernelWidth, int kernelHe
     schema.operationRowBasis = rowBasis;
     schema.operationColBasis = colBasis;
 
-    schema.inputRange = layers[index - 1].outputRange;
-    schema.outputRange = layers[index - 1].outputRange * (schema.inputDepth * kernelWidth * kernelHeight + 1);
-
     schema.predictTempSize = 0;
     schema.trainTempSize = batchSize * (schema.outputDepth * schema.outputWidth * schema.outputHeight);
-#ifdef DEBUG
-    printf("Convolution trainTempSize: %d\n", schema.trainTempSize);
-#endif
     schema.weightsSize = channels * (schema.inputDepth * kernelWidth * kernelHeight + 1);
     layerInitSizes(&schema, batchSize);
     layers.push_back(schema);
@@ -113,13 +104,7 @@ void ModelFacadeBuilder::pooling(int windowWidth, int windowHeight, int rowStep,
     schema.operationRowBasis = rowBasis;
     schema.operationColBasis = colBasis;
 
-    schema.inputRange = layers[index - 1].outputRange;
-    schema.outputRange = layers[index - 1].outputRange;
-
     schema.predictTempSize = batchSize * schema.outputDepth * outputWidth * outputHeight * (windowWidth * windowHeight);
-#ifdef DEBUG
-    printf("Pooling predictTempSize: %d\n", schema.predictTempSize);
-#endif
     schema.trainTempSize = 0;
     schema.weightsSize = schema.inputDepth * schema.inputWidth * schema.inputHeight;
     layerInitSizes(&schema, batchSize);
@@ -150,9 +135,6 @@ void ModelFacadeBuilder::dense(int channels) {
     schema.operationRowBasis = 0;
     schema.operationColBasis = 0;
 
-    schema.inputRange = layers[index - 1].outputRange;
-    schema.outputRange = layers[index - 1].outputRange * (schema.inputDepth * schema.inputWidth * schema.inputHeight + 1);
-
     schema.predictTempSize = 0;
     schema.trainTempSize = batchSize * channels;
     schema.weightsSize = channels * (schema.inputDepth * schema.inputWidth * schema.inputHeight + 1);
@@ -181,9 +163,6 @@ void ModelFacadeBuilder::scale() {
     schema.operationRowBasis = 0;
     schema.operationColBasis = 0;
 
-    schema.inputRange = layers[index - 1].outputRange;
-    schema.outputRange = 1.0;
-
     schema.predictTempSize = batchSize * 1; // 每个block存一个最大值
     schema.trainTempSize = 0;
     schema.weightsSize = 0;
@@ -209,9 +188,6 @@ void ModelFacadeBuilder::relu() {
     schema.operationColStep = 0;
     schema.operationRowBasis = 0;
     schema.operationColBasis = 0;
-
-    schema.inputRange = layers[index - 1].outputRange;
-    schema.outputRange = layers[index - 1].outputRange;
 
     schema.predictTempSize = 0;
     schema.trainTempSize = 0;
@@ -242,9 +218,6 @@ void ModelFacadeBuilder::output() {
     schema.operationRowBasis = 0;
     schema.operationColBasis = 0;
 
-    schema.inputRange = layers[index - 1].outputRange;
-    schema.outputRange = 1.0;
-
     schema.predictTempSize = batchSize * 1 // 10个x中的最大值
         + batchSize * 1 // 10个exp(x-a)的和
         + batchSize * outputSize // 所有的exp(x-a)
@@ -271,9 +244,6 @@ int ModelFacadeBuilder::build(ModelFacade* model) {
     // 拷贝每一层的结构
     for (int i = 0; i < n; i++) {
         model->schemas[i] = layers[i];
-#ifdef DEBUG
-        printf("[%d] %d x %d x %d\n", i, layers[i].outputDepth, layers[i].outputHeight, layers[i].outputWidth);
-#endif
     }
 
     // 此时每一层结构除指针外均已经正确，可以求得权重大小

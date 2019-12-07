@@ -12,9 +12,6 @@ __global__ void layerDevPredictInput(layer_schema_t schema, unsigned char* input
     int inputIndex = layerGetInputIndex(&schema, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
     int outputIndex = layerGetCurrentOutputIndex(&schema);
     output[outputIndex] = (input[inputIndex] + 1) / 256.0;
-
-    // DEBUG
-    // printf("&output = %p, blockIdx.x = %d, blockIdx.y = %d, threadIdx.x = %d, threadIdx.y = %d, inputIndex = %d, ouputIndex = %d, input = %d, output = %lf\n", output, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y, inputIndex, outputIndex, input[inputIndex], output[outputIndex]);
 }
 
 int layerPredictInput(layer_schema_t* schema, int batchSize, unsigned char* input) {

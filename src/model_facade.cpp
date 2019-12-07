@@ -188,9 +188,9 @@ void ModelFacade::setRoundCount(int roundCount) {
 void ModelFacade::printSchema() {
     for (int i = 0; i < schemaCount; i++) {
         layer_schema_t* schema = &schemas[i];
-        printf("[%d](%d, %d, %d)(%.8lf) => (%d, %d, %d)(%.8lf)\n", i,
-            schema->inputDepth, schema->inputHeight, schema->inputWidth, schema->inputRange,
-            schema->outputDepth, schema->outputHeight, schema->outputWidth, schema->outputRange
+        printf("[%d](%d, %d, %d) => (%d, %d, %d)\n", i,
+            schema->inputDepth, schema->inputHeight, schema->inputWidth,
+            schema->outputDepth, schema->outputHeight, schema->outputWidth
         );
     }
 }

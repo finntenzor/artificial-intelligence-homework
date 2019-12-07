@@ -19,7 +19,6 @@ int layerPredictRelu(layer_schema_t* schema, int batchSize) {
     dim3 gridSize(batchSize, schema->outputDepth);
     dim3 blockSize(schema->outputHeight * schema->outputWidth);
     layerDevPredictRelu<<<gridSize, blockSize>>>(schema->predictOutput, schema->predictInput);
-    // printf("Predict relu\n");
     return layerIfError(schema->layerIndex);
 }
 
@@ -35,7 +34,6 @@ __global__ void layerDevTrainRelu(double* trainOutput, double* trainInput, doubl
 int layerTrainRelu(layer_schema_t* schema, int batchSize) {
     dim3 gridSize(batchSize, schema->outputDepth);
     dim3 blockSize(schema->outputHeight * schema->outputWidth);
-    // printf("Train relu\n");
     layerDevTrainRelu<<<gridSize, blockSize>>>(schema->trainOutput, schema->trainInput, schema->predictInput);
     return layerIfError(schema->layerIndex);
 }

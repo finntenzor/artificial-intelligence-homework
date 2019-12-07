@@ -83,10 +83,7 @@ int modelRunBatch(model_schema_t* mem, int offset) {
         return 0;
     }
 
-    // printf("RUN BATCH, offset = %d\n", offset);
-
     for (int i = 0; i < mem->schemaCount; i++) {
-        // printf("RUN LAYER %d\n", i);
         layer_schema_t* schema = &mem->schemas[i];
         switch (schema->type) {
         case LAYER_TYPE_INPUT:
@@ -174,9 +171,6 @@ int modelTrainBatch(model_schema_t* mem, int offset) {
     for (int i = mem->schemaCount - 1; i >= 0 ; i--) {
         layer_schema_t* schema = &mem->schemas[i];
         switch (schema->type) {
-        // case LAYER_TYPE_INPUT:
-        //     ret = layerPredictInput(schema, batchSize, input);
-        //     break;
         case LAYER_TYPE_CONVOLUTION:
             ret = layerTrainConvolution(schema, batchSize);
             break;
@@ -209,28 +203,14 @@ __global__ void modelDevApplyDweights(double studyRate, double* weights, double*
         double m = 0.9 * mweights[index] + 0.1 * g;
         double v = 0.999 * vweights[index] + 0.001 * g * g;
         double w = weights[index];
-        // if (index < 10) {
-        //     // printf("[%d](A)w = %lf, g = %lf, m = %lf, v = %lf\n", index, w, g, m, v);
-        //     printf("[%d](A)v = %lf => %lf, A = %lf, B = %lf\n", index, vweights[index], v, 0.999 * vweights[index], 0.001 * g * g);
-        // }
         mweights[index] = m;
         vweights[index] = v;
         m /= (1 - pow(0.9, t));
         v /= (1 - pow(0.999, t));
-        // if (index < 10) {
-        //     printf("[%d](B)t = %lf, pow(0.999, t) = %lf, 1 - pow(0.999, t) = %lf, v = %lf\n", index, t, pow(0.999, t), 1 - pow(0.999, t), v);
-        //     // printf("[%d](B-)t = %lf, pow(0.9, t) = %lf, 1 - pow(0.9, t) = %lf, m = %lf\n", index, t, pow(0.9, t), 1 - pow(0.9, t), m);
-        //     // printf("[%d](B)g = %lf, m = %lf, v = %lf, w = %lf\n", index, g, m, v, weights[index]);
-        // }
         weights[index] -= studyRate * m / (sqrt(v) + 1e-8);
-        // if (index < 10) {
-        //     printf("[%d](C)studyRate = %lf, m = %lf, s = %lf, w = %lf => %lf\n", index, studyRate, m, (sqrt(v) + 1e-8), w, weights[index]);
-        // }
-        // if (index == 0 && (dweights[index] > 1 || dweights[index] < -1)) {
-        //     printf("RUN WARNING %lf\n", dweights[index]);
-        // }
+
+        // 梯度下降
         // weights[index] -= studyRate * dweights[index];
-        // printf("blockIdx.x = %d, threadIdx.x = %d, index = %d, studyRate = %lf, dweights = %lf, weights = %lf\n", blockIdx.x, threadIdx.x, index, studyRate, dweights[threadIdx.x], weights[threadIdx.x]);
     }
 }
 
@@ -256,7 +236,6 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
     int printMod = batchCount / 10;
     if (printMod < 1) printMod = 1;
 
-    // TODO 将ep改为loss判断
     for (int ep = 0; !ret && ep < mem->roundCount; ep++) {
         for (int i = 0; !ret && i < batchCount; i++) {
             int offset = i * mem->batchSize;

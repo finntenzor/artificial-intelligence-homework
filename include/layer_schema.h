@@ -39,9 +39,6 @@ typedef struct layer_schema {
     int weightsSize; // 需要手动指定
     int dweightsSize;
 
-    double inputRange; // 输入数据范围
-    double outputRange; // 输出数据范围
-
     // 显存指针
     double* predictInput; // 本层的前馈输入，来自前一层的输出
     double* predictOutput; // 本层的前馈输出，供给后一层输入

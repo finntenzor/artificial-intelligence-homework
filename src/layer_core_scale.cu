@@ -1,5 +1,7 @@
 /**
  * layer_core_scale.cu
+ *
+ * ·ÏÆú
  */
 
 #include "layer_run.h"

@@ -76,7 +76,7 @@ __global__ void layerDevTrainConvolution1(double* trainOutput, double* trainInpu
     int rowBasis, int colBasis,
     int inputSize, int inputChannelSize, int inputHeight, int inputWidth,
     int outputSize, int outputChannelSize, int outputHeight, int outputWidth,
-    int weightsSize, double inputRange
+    int weightsSize
 )
 {
     double* trainInputBaseBase = trainInput + blockIdx.x * outputSize;
@@ -104,7 +104,6 @@ __global__ void layerDevTrainConvolution1(double* trainOutput, double* trainInpu
             }
         }
     }
-    // v /= inputRange;
     trainOutput[blockIdx.x * inputSize + blockIdx.y * inputChannelSize + threadIdx.x * inputWidth + threadIdx.y] = v;
 }
 
@@ -122,7 +121,7 @@ int layerTrainConvolution1(layer_schema_t* schema, int batchSize) {
         schema->operationRowBasis, schema->operationColBasis,
         inputSize, inputChannelSize, schema->inputHeight, schema->inputWidth,
         outputSize, outputChannelSize, schema->outputHeight, schema->outputWidth,
-        weightsSize, schema->inputRange
+        weightsSize
     );
     return layerIfError(schema->layerIndex);
 }
@@ -133,7 +132,7 @@ __global__ void layerDevTrainConvolution2(double* dweights, double* trainInput, 
     int rowBasis, int colBasis,
     int inputSize, int inputChannelSize, int inputHeight, int inputWidth,
     int outputSize, int outputChannelSize, int outputHeight, int outputWidth,
-    int weightsSize, int batchSize, double inputRange
+    int weightsSize, int batchSize
 )
 {
     double* wBase = dweights + blockIdx.x * weightsSize + 1;
@@ -153,11 +152,7 @@ __global__ void layerDevTrainConvolution2(double* dweights, double* trainInput, 
             }
         }
     }
-    // v /= inputRange * batchSize;
     v /= batchSize;
-    // if (v > 1 || v < -1) {
-    //     printf("Con:Warnning at (%d, %d, %d) %.16lf\n", blockIdx.x, threadIdx.x, threadIdx.y, v);
-    // }
     wBase[(blockIdx.y * blockDim.x + threadIdx.x) * blockDim.y + threadIdx.y] = v;
 }
 
@@ -174,7 +169,7 @@ int layerTrainConvolution2(layer_schema_t* schema, int batchSize) {
         schema->operationRowBasis, schema->operationColBasis,
         inputSize, inputChannelSize, schema->inputHeight, schema->inputWidth,
         outputSize, outputChannelSize, schema->outputHeight, schema->outputWidth,
-        weightsSize, batchSize, schema->inputRange
+        weightsSize, batchSize
     );
     return layerIfError(schema->layerIndex);
 }
@@ -182,7 +177,7 @@ int layerTrainConvolution2(layer_schema_t* schema, int batchSize) {
 // 计算b变化量
 __global__ void layerDevTrainConvolution3(double* dweights, double* trainInput,
     int outputSize, int outputChannelSize, int outputHeight, int outputWidth,
-    int weightsSize, int batchSize, double inputRange
+    int weightsSize, int batchSize
 )
 {
     double* bBase = dweights + blockIdx.x * weightsSize;
@@ -195,7 +190,6 @@ __global__ void layerDevTrainConvolution3(double* dweights, double* trainInput,
             }
         }
     }
-    // v /= inputRange * batchSize;
     v /= batchSize;
     *bBase = v;
 }
@@ -209,7 +203,7 @@ int layerTrainConvolution3(layer_schema_t* schema, int batchSize) {
     layerDevTrainConvolution3<<<gridSize, blockSize>>>(
         schema->dweights, schema->trainInput,
         outputSize, outputChannelSize, schema->outputHeight, schema->outputWidth,
-        weightsSize, batchSize, schema->inputRange
+        weightsSize, batchSize
     );
     return layerIfError(schema->layerIndex);
 }
