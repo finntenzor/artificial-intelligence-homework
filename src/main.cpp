@@ -159,8 +159,8 @@ void initConfig(model_config_t* config, ModelFacadeBuilder* builder) {
     config->memoryCount = 0;
     config->batchSize = 0;
     config->trainImageCount = 0;
-    config->studyRate = 0.01;
-    config->attenuationRate = 0.912;
+    config->studyRate = 0.001;
+    config->attenuationRate = 1;
     config->printMemoryUsed = 1;
     config->printTrainProcess = 1;
     config->printPredictOutput = 1;
