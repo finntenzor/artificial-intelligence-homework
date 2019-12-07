@@ -64,7 +64,7 @@ int main(int argc, const char* argv[]) {
 
     if (config.printMemoryUsed) {
         int memory = model.getTotalMemoryUsed();
-        printf("Total Memory Used = %d Bytes, %.2lf MB\n", memory, memory / 1024.0 / 1024.0);
+        printf("◊‹œ‘¥Ê π”√ = %d Bytes, %.2lf MB\n", memory, memory / 1024.0 / 1024.0);
     }
 
     if (cli.predict && !cli.train) {

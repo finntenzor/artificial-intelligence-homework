@@ -30,7 +30,7 @@ void printFullConnectedArgs(LayerFacade& layer, int featureIndex, int depth) {
     printMatrixlf(layer.weights + featureIndex * blockSize + 1, schema->inputWidth, schema->inputHeight);
 }
 
-void printFullConnectedOutput(LayerFacade& layer, int beginBlock, int endBlock = -1) {
+void printFullConnectedOutput(LayerFacade& layer, int beginBlock, int endBlock) {
     layer_schema_t* schema = layer.schema;
     int blockSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     if (endBlock < 0) endBlock = beginBlock;
@@ -44,7 +44,7 @@ void printFullConnectedOutput(LayerFacade& layer, int beginBlock, int endBlock =
 }
 
 
-void printPredictOutput(LayerFacade& layer, int depth = 0) {
+void printPredictOutput(LayerFacade& layer, int depth) {
     if (layer.schema->type == LAYER_TYPE_DENSE) {
         int d = layer.schema->outputDepth;
         d = d < 20 ? d : 20;
@@ -60,17 +60,17 @@ void printPredictOutput(LayerFacade& layer, int depth = 0) {
     }
 }
 
-void printPredictInput(LayerFacade& layer, int depth = 0) {
+void printPredictInput(LayerFacade& layer, int depth) {
     int size = layer.schema->inputWidth * layer.schema->inputHeight;
     printMatrixlf8(layer.predictInput + depth * size, layer.schema->inputWidth, layer.schema->inputHeight);
 }
 
-void printTrainOuput(LayerFacade& layer, int depth = 0) {
+void printTrainOuput(LayerFacade& layer, int depth) {
     int size = layer.schema->inputWidth * layer.schema->inputHeight;
     printMatrixlf8(layer.trainOutput + depth * size, layer.schema->inputWidth, layer.schema->inputHeight);
 }
 
-void printWeights(LayerFacade& layer, int depth = 0) {
+void printWeights(LayerFacade& layer, int depth) {
     if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
         int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
         printf("b[%d] = %.8lf, w[%d] = \n", depth, layer.weights[depth * size], depth);
@@ -82,7 +82,7 @@ void printWeights(LayerFacade& layer, int depth = 0) {
     }
 }
 
-void printDweights(LayerFacade& layer, int depth = 0) {
+void printDweights(LayerFacade& layer, int depth) {
     if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
         int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
         printf("db[%d] = %.8lf, dw[%d] = \n", depth, layer.dweights[depth * size], depth);
@@ -118,7 +118,7 @@ void print3DArray(double* dist, int width, int height, int depth) {
     }
 }
 
-void printWholeConvolutionLayer(LayerFacade& layer, int m = 0) {
+void printWholeConvolutionLayer(LayerFacade& layer, int m) {
     layer.read();
     layer_schema_t* schema = layer.schema;
     int inputSize = schema->inputDepth * schema->inputHeight * schema->inputWidth;
