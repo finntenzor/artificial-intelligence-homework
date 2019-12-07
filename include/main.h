@@ -37,6 +37,7 @@ typedef struct model_config {
     int printTrainProcess;
     int printPredictOutput;
     int printPredictAccuracyRate;
+    int printModelSchema;
 } model_config_t;
 
 int showDevices();

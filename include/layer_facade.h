@@ -25,11 +25,6 @@ public:
     ~LayerFacade();
     void setLayerSchema(layer_schema_t* schema);
     void read();
-    void printGeneralOutputImage(int blockIndex, int depth);
-    void printGeneralOutputMatrix(int blockIndex, int depth);
-    void printInputOutputImage(int index);
-    void printFullConnectedArgs(int featureIndex, int depth);
-    void printFullConnectedOutput(int beginBlock, int endBlock);
 };
 
 #endif // LAYER_FACADE_H

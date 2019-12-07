@@ -90,36 +90,3 @@ void LayerFacade::read() {
     layerCopyWeights(schema, weights);
     layerCopyDweights(schema, dweights);
 }
-
-void LayerFacade::printGeneralOutputImage(int blockIndex, int depth) {
-    int imageSize = schema->outputHeight * schema->outputWidth;
-    printImagelf(predictOutput + (blockIndex * schema->outputDepth + depth), schema->outputWidth, schema->outputHeight);
-}
-
-void LayerFacade::printGeneralOutputMatrix(int blockIndex, int depth) {
-    int matrixSize = schema->outputHeight * schema->outputWidth;
-    printMatrixlf(predictOutput + (blockIndex * schema->outputDepth + depth), schema->outputWidth, schema->outputHeight);
-}
-
-void LayerFacade::printInputOutputImage(int index) {
-    int imageSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
-    printImagelf(predictOutput + imageSize * index, schema->outputWidth, schema->outputHeight);
-}
-
-void LayerFacade::printFullConnectedArgs(int featureIndex, int depth) {
-    int blockSize = (schema->inputDepth * schema->inputHeight * schema->inputWidth + 1);
-    printf("b = %.2lf\n", weights[blockSize * featureIndex]);
-    printMatrixlf(weights + featureIndex * blockSize + 1, schema->inputWidth, schema->inputHeight);
-}
-
-void LayerFacade::printFullConnectedOutput(int beginBlock, int endBlock = -1) {
-    int blockSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
-    if (endBlock < 0) endBlock = beginBlock;
-    for (int i = beginBlock; i <= endBlock; i++) {
-        for (int j = 0; j < blockSize; j++) {
-            printf("%.2lf ", predictOutput[i * blockSize + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-}

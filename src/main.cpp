@@ -16,162 +16,6 @@ LabelSet trainLabelSet;
 ImageSet testImageSet;
 LabelSet testLabelSet;
 ModelFacade model;
-LayerFacade layers[8];
-
-void printPredictOutput(LayerFacade& layer, int depth = 0) {
-    if (layer.schema->type == LAYER_TYPE_DENSE) {
-        int d = layer.schema->outputDepth;
-        d = d < 20 ? d : 20;
-        printMatrixlf8(layer.predictOutput, d, 1);
-    } else if (layer.schema->type == LAYER_TYPE_OUTPUT) {
-        int outputSize = layer.schema->outputDepth * layer.schema->outputHeight * layer.schema->outputWidth;
-        int batchSize = 100;
-        double* y = layer.predictTemp + batchSize * 1 + batchSize * 1 + batchSize * outputSize;
-        printMatrixlf8(y, outputSize, 1);
-    } else if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
-        int size = layer.schema->outputWidth * layer.schema->outputHeight;
-        printMatrixlf8(layer.predictOutput + depth * size, layer.schema->outputWidth, layer.schema->outputHeight);
-    }
-}
-
-void printPredictInput(LayerFacade& layer, int depth = 0) {
-    int size = layer.schema->inputWidth * layer.schema->inputHeight;
-    printMatrixlf8(layer.predictInput + depth * size, layer.schema->inputWidth, layer.schema->inputHeight);
-}
-
-void printTrainOuput(LayerFacade& layer, int depth = 0) {
-    int size = layer.schema->inputWidth * layer.schema->inputHeight;
-    printMatrixlf8(layer.trainOutput + depth * size, layer.schema->inputWidth, layer.schema->inputHeight);
-}
-
-void printWeights(LayerFacade& layer, int depth = 0) {
-    if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
-        int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
-        printf("b[%d] = %.8lf, w[%d] = \n", depth, layer.weights[depth * size], depth);
-        printMatrixlf8(layer.weights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);
-    } else if (layer.schema->type == LAYER_TYPE_DENSE) {
-        int size = layer.schema->inputDepth * layer.schema->inputWidth * layer.schema->inputHeight + 1;
-        printf("b[%d] = %.8lf, w[%d] = \n", depth, layer.weights[depth * size], depth);
-        printMatrixlf8(layer.weights + depth * size + 1, size - 1, 1);
-    }
-}
-
-void printDweights(LayerFacade& layer, int depth = 0) {
-    if (layer.schema->type == LAYER_TYPE_CONVOLUTION) {
-        int size = layer.schema->inputDepth * layer.schema->operationWidth * layer.schema->operationHeight + 1;
-        printf("db[%d] = %.8lf, dw[%d] = \n", depth, layer.dweights[depth * size], depth);
-        printMatrixlf8(layer.dweights + depth * size + 1, layer.schema->operationWidth, layer.schema->operationHeight);
-    } else if (layer.schema->type == LAYER_TYPE_DENSE) {
-        int size = layer.schema->inputDepth * layer.schema->inputWidth * layer.schema->inputHeight + 1;
-        printf("db[%d] = %.8lf, dw[%d] = \n", depth, layer.dweights[depth * size], depth);
-        printMatrixlf8(layer.dweights + depth * size + 1, size - 1, 1);
-    }
-}
-
-void printConvolutionLayer(LayerFacade& layer) {
-    layer.read();
-    printPredictInput(layer);
-    printWeights(layer);
-    printWeights(layer, 1);
-    printPredictOutput(layer);
-    printPredictOutput(layer, 1);
-    printDweights(layer);
-    printDweights(layer, 1);
-}
-
-void print3DArray(double* dist, int width, int height, int depth) {
-    for (int k = 0; k < depth; k++) {
-        printf("----------%d----------\n", k);
-        for (int i = 0; i < height; i++) {
-            for (int j = 0; j < width; j++) {
-                int index = (k * height + i) * width + j;
-                printf("%.8lf ", dist[index]);
-            }
-            printf("\n");
-        }
-    }
-}
-
-void printWholeConvolutionLayer(LayerFacade& layer, int m = 0) {
-    layer.read();
-    layer_schema_t* schema = layer.schema;
-    int inputSize = schema->inputDepth * schema->inputHeight * schema->inputWidth;
-    int weightsSize = schema->inputDepth * schema->operationWidth * schema->operationWidth + 1;
-    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
-    printf("PredictInput:\n");
-    print3DArray(layer.predictInput + m * inputSize, schema->inputWidth, schema->inputHeight, schema->inputDepth);
-    for (int i = 0; i < schema->outputDepth; i++) {
-        double* kernel = layer.weights + weightsSize * i;
-        printf("Kernel %d, b = %.8lf, w = \n", i, kernel[0]);
-        print3DArray(kernel + 1, schema->operationWidth, schema->operationHeight, schema->inputDepth);
-    }
-    printf("PredictOutput:\n");
-    print3DArray(layer.predictOutput + m * outputSize, schema->outputWidth, schema->outputHeight, schema->outputDepth);
-    printf("TrainInput:\n");
-    print3DArray(layer.trainInput + m * outputSize, schema->outputWidth, schema->outputHeight, schema->outputDepth);
-    for (int i = 0; i < schema->outputDepth; i++) {
-        double* kernel = layer.dweights + weightsSize * i;
-        printf("Kernel %d, db = %.8lf, dw = \n", i, kernel[0]);
-        print3DArray(kernel + 1, schema->operationWidth, schema->operationHeight, schema->inputDepth);
-    }
-    printf("TrainOutput:\n");
-    print3DArray(layer.trainOutput + m * inputSize, schema->inputWidth, schema->inputHeight, schema->inputDepth);
-}
-
-void printOutputY(LayerFacade& layer, int batchSize) {
-    layer_schema_t* schema = layer.schema;
-    int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
-    int offset = batchSize * 1 + batchSize * 1 + batchSize * outputSize;
-    printMatrixlf8(layer.predictTemp + offset, outputSize, 1);
-}
-
-int trainListener(model_schema_t* mem, int batchIndex, int step) {
-    if (step == 2) {
-        printf("[After Train, Before apply m=0]\n");
-        printWholeConvolutionLayer(layers[1]), 0;
-        printWholeConvolutionLayer(layers[3]), 0;
-        // printf("[After Train, Before apply m=1]\n");
-        // printWholeConvolutionLayer(layers[3], 1);
-        // return 1;
-        // printf("Layer 2\n");
-        // printConvolutionLayer(layers[2]);
-        // printf("Layer 4\n");
-        // printConvolutionLayer(layers[4]);
-        // layers[1].read();
-        // printPredictOutput(layers[1]);
-
-        // layers[3].read();
-        // printPredictOutput(layers[3]);
-
-        // layers[5].read();
-        // printPredictOutput(layers[5]);
-
-        // printf("Layer 8 = \n");
-        // layers[8].read();
-        // printOutputY(layers[8], config.batchSize);
-        // printMatrixlf8(layers[8].trainOutput, 10, 1);
-
-        // printf("Layer 7 = \n");
-        // layers[7].read();
-        // printMatrixlf8(layers[7].predictInput, 500, 1);
-        // printWeights(layers[7]);
-        // printDweights(layers[7]);
-        // printMatrixlf8(layers[7].trainOutput, 10, 1);
-
-        // printf("Layer 6 = \n");
-        // layers[6].read();
-        // printMatrixlf8(layers[6].trainOutput, 10, 1);
-
-        // printf("Layer 5 = \n");
-        // layers[5].read();
-        // printTrainOuput(layers[5]);
-
-        // printf("Layer 3 = \n");
-        // layers[3].read();
-        // printTrainOuput(layers[3]);
-    }
-    return 0;
-}
 
 int main(int argc, const char* argv[]) {
     cudaError_t cudaStatus;
@@ -201,12 +45,14 @@ int main(int argc, const char* argv[]) {
     if (builder.build(&model)) {
         return -1;
     }
+
     model.setStudyRate(config.studyRate);
     model.setAttenuationRate(config.attenuationRate);
     model.setRoundCount(config.roundCount);
-    // model.setTrainListener(trainListener);
-    // for (int i = 0; i < 8; i++) layers[i].setLayerSchema(model.layerAt(i));
-    model.printSchema();
+
+    if (config.printModelSchema) {
+        model.printSchema();
+    }
 
     ret = ret || trainImageSet.read(config.trainImage);
     ret = ret || trainLabelSet.read(config.trainLabel);
@@ -215,8 +61,6 @@ int main(int argc, const char* argv[]) {
     if (ret) {
         return -1;
     }
-
-    printMatrixu(trainLabelSet.labels, 5, 5);
 
     if (config.printMemoryUsed) {
         int memory = model.getTotalMemoryUsed();
@@ -321,6 +165,7 @@ void initConfig(model_config_t* config, ModelFacadeBuilder* builder) {
     config->printTrainProcess = 1;
     config->printPredictOutput = 1;
     config->printPredictAccuracyRate = 1;
+    config->printModelSchema = 0;
 }
 
 int readConfig(model_config_t* config, const char* configPath) {
@@ -343,6 +188,7 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.expectInteger(MODULE_GLOBAL, "printTrainProcess", &(config->printTrainProcess));
     reader.expectInteger(MODULE_GLOBAL, "printPredictOutput", &(config->printPredictOutput));
     reader.expectInteger(MODULE_GLOBAL, "printPredictAccuracyRate", &(config->printPredictAccuracyRate));
+    reader.expectInteger(MODULE_GLOBAL, "printModelSchema", &(config->printModelSchema));
     reader.beforeModule(&beforeModule);
     reader.expectLayer(MODULE_MODEL, "Input", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Dense", &readLayer);
