@@ -192,7 +192,7 @@ void modelClearPointers(model_schema_t* mem) {
     mem->trainTemps = NULL;
     mem->weights = NULL;
     mem->dweights = NULL;
-    mem->accuracyRate = NULL;
+    mem->accuracyCount = NULL;
 }
 
 int modelAllocDeviceMemory(model_schema_t* mem) {
@@ -223,7 +223,8 @@ int modelAllocDeviceMemory(model_schema_t* mem) {
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->dweights, modelGetDweightsSize(mem) * sizeof(double), "模型权重变化量g")) return 1;
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->mweights, modelGetDweightsSize(mem) * sizeof(double), "模型权重变化量m")) return 1;
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->vweights, modelGetDweightsSize(mem) * sizeof(double), "模型权重变化量v")) return 1;
-    if (modelAllocDeviceMemoryFor(mem, (void**)&mem->accuracyRate, 1 * sizeof(double), "准确率")) return 1;
+    if (modelAllocDeviceMemoryFor(mem, (void**)&mem->accuracyCount, 1 * sizeof(int), "准确个数")) return 1;
+    if (modelAllocDeviceMemoryFor(mem, (void**)&mem->totalCount, 1 * sizeof(int), "训练个数")) return 1;
     if (modelAllocDeviceMemoryFor(mem, (void**)&mem->loss, 1 * sizeof(double), "损失")) return 1;
 
     modelInitLayerPointers(mem);
@@ -245,7 +246,7 @@ void modelFreeDeviceMemory(model_schema_t* mem) {
     cudaFree(mem->trainTemps);
     cudaFree(mem->weights);
     cudaFree(mem->dweights);
-    cudaFree(mem->accuracyRate);
+    cudaFree(mem->accuracyCount);
     modelClearPointers(mem);
 }
 

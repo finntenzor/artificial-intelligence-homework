@@ -119,7 +119,7 @@ int layerPredictOutput(layer_schema_t* schema, int batchSize, unsigned char* out
     return ret;
 }
 
-__global__ void layerDevCheckOutput(double* y, unsigned char* output, unsigned char* labels, int batchSize, int outputSize, double* pacc, double* ploss) {
+__global__ void layerDevCheckOutput(double* y, unsigned char* output, unsigned char* labels, int batchSize, int outputSize, int* pacc, int* ptot, double* ploss) {
     int acc = 0;
     double loss = 0;
     for (int i = 0; i < batchSize; i++) {
@@ -130,18 +130,19 @@ __global__ void layerDevCheckOutput(double* y, unsigned char* output, unsigned c
             acc++;
         }
     }
-    *pacc = acc * 1.0 / batchSize;
-    *ploss = loss / batchSize;
+    *pacc += acc;
+    *ploss += loss;
+    *ptot += batchSize;
 }
 
-int layerCheckOutput(layer_schema_t* schema, int batchSize, unsigned char* output, unsigned char* labels, double* pacc, double* ploss) {
+int layerCheckOutput(layer_schema_t* schema, int batchSize, unsigned char* output, unsigned char* labels, int* pacc, int* ptot, double* ploss) {
     int outputSize = schema->outputDepth * schema->outputHeight * schema->outputWidth;
     double* maxx;
     double* sumex;
     double* expx;
     double* y;
     layerOutputGetTempPointers(schema, batchSize, &maxx, &sumex, &expx, &y);
-    layerDevCheckOutput<<<1, 1>>>(y, output, labels, batchSize, outputSize, pacc, ploss);
+    layerDevCheckOutput<<<1, 1>>>(y, output, labels, batchSize, outputSize, pacc, ptot, ploss);
     return layerIfError(schema->layerIndex);
 }
 

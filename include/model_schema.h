@@ -19,7 +19,8 @@ typedef struct model_schema {
     double* dweights; // 每一层的训练权重的导数
     double* mweights; // m
     double* vweights; // v
-    double* accuracyRate; // 准确度
+    int* accuracyCount; // 准确个数
+    int* totalCount; // 训练个数
     double* loss; // 损失
     double studyRate; // 学习率
     double attenuationRate; // 学习率衰减率<废弃>

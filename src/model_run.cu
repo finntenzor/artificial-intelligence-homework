@@ -106,7 +106,7 @@ int modelRunBatch(model_schema_t* mem, int offset) {
             break;
         case LAYER_TYPE_OUTPUT:
             ret = layerPredictOutput(schema, batchSize, output);
-            ret = ret || layerCheckOutput(schema, batchSize, output, labels, mem->accuracyRate, mem->loss);
+            ret = ret || layerCheckOutput(schema, batchSize, output, labels, mem->accuracyCount, mem->totalCount, mem->loss);
             break;
         }
         if (ret) break;
@@ -114,10 +114,17 @@ int modelRunBatch(model_schema_t* mem, int offset) {
     return ret;
 }
 
-int modelFetchAccuracyRate(model_schema_t* mem, double* acc) {
+int modelFetchAccuracyRate(model_schema_t* mem, int* acc) {
     cudaError_t cudaStatus = cudaSuccess;
-    cudaStatus = cudaMemcpy(acc, mem->accuracyRate, 1 * sizeof(double), cudaMemcpyDeviceToHost);
-    if (modelIfErrorWithStatus(cudaStatus, "无法将准确率从显存拷贝回内存")) return 1;
+    cudaStatus = cudaMemcpy(acc, mem->accuracyCount, 1 * sizeof(int), cudaMemcpyDeviceToHost);
+    if (modelIfErrorWithStatus(cudaStatus, "无法将准确个数从显存拷贝回内存")) return 1;
+    return 0;
+}
+
+int modelFetchTotalCount(model_schema_t* mem, int* totalCount) {
+    cudaError_t cudaStatus = cudaSuccess;
+    cudaStatus = cudaMemcpy(totalCount, mem->totalCount, 1 * sizeof(int), cudaMemcpyDeviceToHost);
+    if (modelIfErrorWithStatus(cudaStatus, "无法将训练个数从显存拷贝回内存")) return 1;
     return 0;
 }
 
@@ -147,13 +154,20 @@ __global__ void modelDevClearDweights(double* dweights, double* mweights, double
     }
 }
 
-int modelClearDweights(model_schema_t* mem) {
+__global__ void modelDevClearAccuracy(int* accuracyCount, int* totalCount, double* loss) {
+    *accuracyCount = 0;
+    *totalCount = 0;
+    *loss = 0;
+}
+
+int modelClearArguments(model_schema_t* mem) {
     int dwsize = modelGetDweightsSize(mem);
     int block, thread;
     modelCalcGridThreadCount(dwsize, &block, &thread);
     dim3 gridSize(block);
     dim3 blockSize(thread);
     modelDevClearDweights<<<gridSize, blockSize>>>(mem->dweights, mem->mweights, mem->vweights, dwsize);
+    modelDevClearAccuracy<<<1, 1>>>(mem->accuracyCount, mem->totalCount, mem->loss);
     if (modelIfError("清空模型权重变化量时发生错误")) return 1;
     return 0;
 }
@@ -202,7 +216,7 @@ __global__ void modelDevApplyDweights(double studyRate, double* weights, double*
         double g = dweights[index];
         double m = 0.9 * mweights[index] + 0.1 * g;
         double v = 0.999 * vweights[index] + 0.001 * g * g;
-        double w = weights[index];
+        // double w = weights[index];
         mweights[index] = m;
         vweights[index] = v;
         m /= (1 - pow(0.9, t));
@@ -229,14 +243,17 @@ int modelApplyDweights(model_schema_t* mem, int offset, double t) {
 int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, int batchIndex, int step), int printTrainProcess) {
     int ret = 0;
     int batchCount = modelGetBatchCount(mem);
-    ret = modelClearDweights(mem);
-    double accuracyRate = 0;
-    double loss = 0;
-    double t = 0;
+    int accuracy;
+    int total;
+    double loss;
+    double t;
     int printMod = batchCount / 10;
     if (printMod < 1) printMod = 1;
 
     for (int ep = 0; !ret && ep < mem->roundCount; ep++) {
+        ret = modelClearArguments(mem);
+        accuracy = total = 0;
+        loss = t = 0;
         for (int i = 0; !ret && i < batchCount; i++) {
             int offset = i * mem->batchSize;
             if (batchCallback != NULL) {
@@ -255,12 +272,14 @@ int modelTrain(model_schema_t* mem, int (*batchCallback)(model_schema_t* mem, in
             if (batchCallback != NULL) {
                 ret = ret || (*batchCallback)(mem, i, 3);
             }
-            ret = ret || modelFetchAccuracyRate(mem, &accuracyRate);
+            ret = ret || modelFetchAccuracyRate(mem, &accuracy);
+            ret = ret || modelFetchTotalCount(mem, &total);
             ret = ret || modelFetchLoss(mem, &loss);
             if ((i % printMod == 0) && printTrainProcess) {
-                printf("[%d]当前正确率 = %10.6lf%%, 损失 = %.6lf\n", ep, accuracyRate * 100, loss);
+                printf("[%d]当前正确率 = %10.6lf%%, 损失 = %.6lf\n", ep, accuracy * 100.0 / total, loss * 1.0 / total);
             }
         }
+        printf("[%d]当前正确率 = %10.6lf%%, 损失 = %.6lf\n", ep, accuracy * 100.0 / total, loss * 1.0 / total);
         mem->studyRate *= mem->attenuationRate;
     }
     return ret;
