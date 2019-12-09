@@ -15,6 +15,7 @@ static const int ARG_SAVE_PATH = 4;
 static const int ARG_TRAIN = 5;
 static const int ARG_PREDICT = 6;
 static const int ARG_CONFIG = 7;
+static const int ARG_VERSION = 8;
 
 static const int STATUS_ERROR = -1;
 static const int STATUS_EXIT = 0;
@@ -34,6 +35,7 @@ void clearCliArguments(cli_arguments_t* cli) {
     cli->device = 0;
     cli->train = 0;
     cli->predict = 0;
+    cli->version = 0;
     strcpy(cli->loadPath, "");
     strcpy(cli->savePath, "");
     strcpy(cli->configPath, "");
@@ -65,6 +67,9 @@ int getArgFromLongArgument(const char* str, int* currentPos) {
     } else if (strcmp(argumentName, "config") == 0) {
         arg = ARG_CONFIG;
         pos += 6;
+    } else if (strcmp(argumentName, "version") == 0) {
+        arg = ARG_VERSION;
+        pos += 7;
     }
     *currentPos = pos;
     return arg;
@@ -136,6 +141,9 @@ int parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
                 } else if (arg[currentPos] == 'c') {
                     currentArg = ARG_CONFIG;
                     status = STATUS_CONFIRM_EXPECT;
+                } else if (arg[currentPos] == 'v') {
+                    currentArg = ARG_VERSION;
+                    status = STATUS_CONFIRM_EXPECT;
                 } else {
                     fprintf(stderr, "无法识别的选项 %s\n", arg);
                     status = STATUS_ERROR;
@@ -157,6 +165,8 @@ int parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
                     status = STAUTS_EXPECT_END;
                 } else if (currentArg == ARG_CONFIG) {
                     status = STATUS_EXPECT_INPUT;
+                } else if (currentArg == ARG_VERSION) {
+                    status = STAUTS_EXPECT_END;
                 }
                 break;
             case STAUTS_EXPECT_END:
@@ -173,6 +183,11 @@ int parseCliArguments(cli_arguments_t* cli, int argc, const char* argv[]) {
                         status = STATUS_READY;
                     } else if (currentArg == ARG_PREDICT) {
                         cli->predict = 1;
+                        index++;
+                        currentPos = 0;
+                        status = STATUS_READY;
+                    } else if (currentArg == ARG_VERSION) {
+                        cli->version = 1;
                         index++;
                         currentPos = 0;
                         status = STATUS_READY;

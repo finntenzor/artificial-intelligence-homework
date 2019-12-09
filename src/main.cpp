@@ -31,6 +31,11 @@ int main(int argc, const char* argv[]) {
         return 0;
     }
 
+    if (cli.version) {
+        printf("VERSION 1.0.1\n");
+        return 0;
+    }
+
     cudaStatus = cudaSetDevice(cli.device);
     if (cudaStatus != cudaSuccess) {
         fprintf(stderr, "无法切换到设备 %d. 您的GPU是否支持CUDA?", cli.device);
@@ -196,6 +201,7 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.expectLayer(MODULE_MODEL, "Pooling", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Scale", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Relu", &readLayer);
+    reader.expectLayer(MODULE_MODEL, "Tanh", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Output", &readLayer);
     return reader.read(configPath);
 }
@@ -279,6 +285,12 @@ int readLayer(void* dist, const char* layerName, const int n, const int argv[]) 
     } else if (strcmp(layerName, "Relu") == 0) {
         if (n != 0) {
             fprintf(stderr, "线性整流层必须是零个参数, 实际上获得 %d 个参数\n", n);
+            return 1;
+        }
+        config->builder->relu();
+    } else if (strcmp(layerName, "Tanh") == 0) {
+        if (n != 0) {
+            fprintf(stderr, "Tanh激活层必须是零个参数, 实际上获得 %d 个参数\n", n);
             return 1;
         }
         config->builder->relu();

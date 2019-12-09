@@ -7,7 +7,8 @@ const int LAYER_TYPE_POOLING = 3;
 const int LAYER_TYPE_DENSE = 4;
 const int LAYER_TYPE_SCALE = 5;
 const int LAYER_TYPE_RELU = 6;
-const int LAYER_TYPE_OUTPUT = 7;
+const int LAYER_TYPE_TANH = 7;
+const int LAYER_TYPE_OUTPUT = 8;
 
 typedef struct layer_schema {
     int layerIndex; // ²ãÏÂ±ê

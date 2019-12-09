@@ -7,6 +7,7 @@ typedef struct cli_arguments {
     int device; // -d=0 --device=0
     int train; // -t
     int predict;  // -p
+    int version; // -v
     char loadPath[1000]; // -l= -l xxx --load
     char savePath[1000]; // -s
     char configPath[1000]; // -c

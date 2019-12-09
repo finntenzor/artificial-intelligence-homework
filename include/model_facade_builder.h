@@ -27,6 +27,7 @@ public:
     void dense(int channels);
     void scale();
     void relu();
+    void tanh();
     void output();
     int build(ModelFacade* model);
 };
