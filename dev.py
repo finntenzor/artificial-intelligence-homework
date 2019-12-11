@@ -9,6 +9,7 @@ layers = [
     'core_dense',
     'core_scale',
     'core_relu',
+    'core_tanh',
     'core_output',
     'run_common',
 ]

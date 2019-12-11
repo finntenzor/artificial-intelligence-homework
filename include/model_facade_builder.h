@@ -13,12 +13,15 @@
 
 class ModelFacadeBuilder {
     int batchSize;
-    int inputCount;
+    int memoryCount;
+    int trainCount;
+    int testCount;
+    int predictCount;
     std::vector<layer_schema_t> layers;
 public:
     ModelFacadeBuilder();
     ~ModelFacadeBuilder();
-    void setMemory(int inputCount, int batchSize);
+    void setMemory(int memoryCount, int trainCount, int testCount, int predictCount, int batchSize);
     void input(int width, int height);
     void convolution(int channels, int kernelWidth, int kernelHeight, int rowStep, int colStep, int rowBasis, int colBasis, int outputWidth = 0, int outputHeight = 0);
     void convolution(int channels, int kernelSize, int step, int basis = 0, int outputSize = 0);

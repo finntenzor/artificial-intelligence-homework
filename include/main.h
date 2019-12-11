@@ -25,10 +25,10 @@ typedef struct model_config {
     char testLabel[1000];
     char loadPath[1000];
     char savePath[1000];
-    int roundCount;
-    int memoryCount;
+    int epoch;
     int batchSize;
     int trainImageCount;
+    int testImageCount;
     int predictImageCount;
     int predictOutputCount;
     double studyRate;
@@ -38,6 +38,7 @@ typedef struct model_config {
     int printPredictOutput;
     int printPredictAccuracyRate;
     int printModelSchema;
+    int lossCheckCount;
 } model_config_t;
 
 int showDevices();

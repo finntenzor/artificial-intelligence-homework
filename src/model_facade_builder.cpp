@@ -7,16 +7,25 @@
 
 ModelFacadeBuilder::ModelFacadeBuilder() {
     batchSize = 0;
-    inputCount = 0;
+    memoryCount = 0;
+    trainCount = 0;
+    testCount = 0;
+    predictCount = 0;
 }
 ModelFacadeBuilder::~ModelFacadeBuilder() {
     batchSize = 0;
-    inputCount = 0;
+    memoryCount = 0;
+    trainCount = 0;
+    testCount = 0;
+    predictCount = 0;
 }
 
-void ModelFacadeBuilder::setMemory(int inputCount, int batchSize) {
+void ModelFacadeBuilder::setMemory(int memoryCount, int trainCount, int testCount, int predictCount, int batchSize) {
     this->batchSize = batchSize;
-    this->inputCount = inputCount;
+    this->memoryCount = memoryCount;
+    this->trainCount = trainCount;
+    this->testCount = testCount;
+    this->predictCount = predictCount;
 }
 
 void ModelFacadeBuilder::input(int width, int height) {
@@ -260,7 +269,10 @@ void ModelFacadeBuilder::output() {
 int ModelFacadeBuilder::build(ModelFacade* model) {
     int n = (int)layers.size();
     model->schemaCount = n;
-    model->inputCount = model->maxInputCount = inputCount;
+    model->memoryCount = memoryCount;
+    model->trainCount = trainCount;
+    model->testCount = testCount;
+    model->predictCount = predictCount;
     model->batchSize = batchSize;
     model->schemas = new layer_schema_t[n];
     model->studyRate = 0.01; // д╛хоя╖о╟бй

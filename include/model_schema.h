@@ -5,7 +5,10 @@
 
 typedef struct model_schema {
     int schemaCount;
-    int inputCount;
+    int memoryCount;
+    int trainCount;
+    int testCount;
+    int predictCount;
     int batchSize;
     layer_schema_t* schemas;
     unsigned char* input; // 所有的输入集
@@ -23,8 +26,10 @@ typedef struct model_schema {
     int* totalCount; // 训练个数
     double* loss; // 损失
     double studyRate; // 学习率
-    double attenuationRate; // 学习率衰减率<废弃>
-    int roundCount; // 学习多少轮
+    double attenuationRate; // 学习率衰减率
+    int epoch; // 学习多少轮
+    int printTrainProcess; // 是否输出训练进度
+    int lossCheckCount; // 检查多少个loss来判断是否提前退出
 } model_schema_t;
 
 #endif // MODEL_SCHEMA_H

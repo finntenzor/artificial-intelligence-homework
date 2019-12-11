@@ -10,7 +10,6 @@
 #include "model_facade.h"
 
 ModelFacade::ModelFacade() {
-    maxInputCount = 0;
     schemas = NULL;
     hostWeights = NULL;
     accuracyRate = 0;
@@ -101,35 +100,27 @@ void ModelFacade::randomGenerateArgs() {
                 }
             }
         } else {
-            q = sqrt(2.0 / schema->predictInputSize);
+            q = sqrt(3.0) / schema->predictInputSize;
             for (int i = 0; i < m; i++) {
-                w[i] = ((rand() % 1024) / 1024.0) * q;
+                w[i] = ((rand() % 1024) / 1024.0 - 0.5) * q;
             }
         }
         w += m;
     }
 }
 
-int ModelFacade::predict(unsigned char* input, unsigned char* output, int totalCount) {
+int ModelFacade::predict(unsigned char* input, unsigned char* output) {
     int ret = 0;
-
-    if (totalCount > maxInputCount) {
-        fprintf(stderr, "内存不足，无法预测此规模的数据\n");
-        return -1;
-    }
-    if (totalCount != 0) {
-        this->inputCount = totalCount;
-    }
 
     if (this->hostWeights == NULL) {
         fprintf(stderr, "没有模型权重，无法进行预测\n");
         return -1;
     }
 
-    ret = ret || modelCopyInput(this, input);
+    ret = ret || modelCopyPredictInput(this, input);
     ret = ret || modelCopyToWeights(this, hostWeights);
     ret = ret || modelPredict(this);
-    ret = ret || modelCopyOutput(this, output);
+    ret = ret || modelCopyPredictOutput(this, output);
     ret = ret || modelCopyFromWeights(this, hostWeights);
     return ret;
 }
@@ -138,25 +129,17 @@ double ModelFacade::getAccuracyRate() {
     return accuracyRate;
 }
 
-int ModelFacade::train(unsigned char* input, unsigned char* labels, int totalCount, int printTrainProcess) {
+int ModelFacade::train(unsigned char* trainInput, unsigned char* trainLabels, unsigned char* testInput, unsigned char* testLabels) {
     int ret = 0;
-
-    if (totalCount > maxInputCount) {
-        fprintf(stderr, "内存不足, 无法训练此规模的数据; 需要 %d, 已给出 %d\n", totalCount, maxInputCount);
-        return -1;
-    }
-    if (totalCount != 0) {
-        this->inputCount = totalCount;
-    }
 
     if (this->hostWeights == NULL) {
         this->randomGenerateArgs();
     }
 
-    ret = ret || modelCopyInput(this, input);
-    ret = ret || modelCopyLabels(this, labels);
+    ret = ret || modelCopyTrainInput(this, trainInput, testInput);
+    ret = ret || modelCopyTrainLabels(this, trainLabels, testLabels);
     ret = ret || modelCopyToWeights(this, hostWeights);
-    ret = ret || modelTrain(this, batchCallback, printTrainProcess);
+    ret = ret || modelTrain(this, batchCallback);
     ret = ret || modelCopyFromWeights(this, hostWeights);
     return ret;
 }
@@ -181,8 +164,17 @@ void ModelFacade::setAttenuationRate(double attenuationRate) {
     this->attenuationRate = attenuationRate;
 }
 
-void ModelFacade::setRoundCount(int roundCount) {
-    this->roundCount = roundCount;
+void ModelFacade::setEpoch(int epoch) {
+    this->epoch = epoch;
+}
+
+void ModelFacade::setPrintTrainProcess(int printTrainProcess) {
+    this->printTrainProcess = printTrainProcess;
+}
+
+void ModelFacade::setLossCheckCount(int lossCheckCount) {
+    if (lossCheckCount < 2) lossCheckCount = 2;
+    this->lossCheckCount = lossCheckCount;
 }
 
 void ModelFacade::printSchema() {

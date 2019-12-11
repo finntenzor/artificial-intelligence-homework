@@ -46,15 +46,15 @@ int modelGetOutputBlockSize(model_schema_t* mem) {
 }
 
 int modelGetInputSize(model_schema_t* mem) {
-    return mem->inputCount * modelGetInputBlockSize(mem);
+    return mem->memoryCount * modelGetInputBlockSize(mem);
 }
 
 int modelGetLabelsSize(model_schema_t* mem) {
-    return mem->inputCount * modelGetLabelsBlockSize(mem);
+    return mem->memoryCount * modelGetLabelsBlockSize(mem);
 }
 
 int modelGetOutputSize(model_schema_t* mem) {
-    return mem->inputCount * modelGetOutputBlockSize(mem);
+    return mem->memoryCount * modelGetOutputBlockSize(mem);
 }
 
 int modelGetPredictValuesSize(model_schema_t* mem) {
@@ -274,12 +274,39 @@ int modelCopyInput(model_schema_t* mem, unsigned char* input) {
     return modelCopyToDevice(mem->input, input, modelGetInputSize(mem) * sizeof(unsigned char), "输入集");
 }
 
+int modelCopyTrainInput(model_schema_t* mem, unsigned char* train, unsigned char* test) {
+    int ret = 0;
+    int trainSize = mem->trainCount * modelGetInputBlockSize(mem) * sizeof(unsigned char);
+    int testSize = mem->testCount * modelGetInputBlockSize(mem) * sizeof(unsigned char);
+    ret = ret || modelCopyToDevice(mem->input, train, trainSize, "训练输入集");
+    ret = ret || modelCopyToDevice(mem->input + trainSize, test, testSize, "测试输入集");
+    return ret;
+}
+
+int modelCopyPredictInput(model_schema_t* mem, unsigned char* predict) {
+    int predictSize = mem->predictCount * modelGetInputBlockSize(mem) * sizeof(unsigned char);
+    return modelCopyToDevice(mem->input, predict, predictSize, "预测输入集");
+}
+
 int modelCopyLabels(model_schema_t* mem, unsigned char* labels) {
     return modelCopyToDevice(mem->labels, labels, modelGetLabelsSize(mem) * sizeof(unsigned char), "标签集");
 }
 
+int modelCopyTrainLabels(model_schema_t* mem, unsigned char* train, unsigned char* test) {
+    int ret = 0;
+    int trainSize = mem->trainCount * modelGetLabelsBlockSize(mem) * sizeof(unsigned char);
+    int testSize = mem->testCount * modelGetLabelsBlockSize(mem) * sizeof(unsigned char);
+    ret = ret || modelCopyToDevice(mem->labels, train, trainSize, "训练标签集");
+    ret = ret || modelCopyToDevice(mem->labels + trainSize, test, testSize, "测试标签集");
+    return ret;
+}
+
 int modelCopyOutput(model_schema_t* mem, unsigned char* output) {
     return modelCopyFromDevice(output, mem->output, modelGetOutputSize(mem) * sizeof(unsigned char), "输出集");
+}
+
+int modelCopyPredictOutput(model_schema_t* mem, unsigned char* output) {
+    return modelCopyFromDevice(output, mem->output, mem->predictCount * modelGetOutputBlockSize(mem) * sizeof(unsigned char), "预测输出集");
 }
 
 int modelCopyToWeights(model_schema_t* mem, double* weights) {

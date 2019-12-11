@@ -51,6 +51,7 @@ layer_core_input.cu
 layer_core_output.cu
 layer_core_pooling.cu
 layer_core_relu.cu
+layer_core_tanh.cu
 layer_core_scale.cu
 layer_run_common.cu
 model_run.cu
@@ -109,11 +110,11 @@ testLabel ./data/t10k-labels.idx1-ubyte # 测试集y路径
 [global]
 loadPath ./mnist.5.model # 模型加载路径
 savePath ./mnist.5.model # 模型保存路径
-roundCount 10 # 即epoch 将整个训练集运行多少遍
-memoryCount 60000 # 取训练集和测试集图片个数较大的那个
+epoch 10 # 将整个训练集运行多少遍
 batchSize 100 # 每一批训练多少张图片
 trainImageCount 60000 # 训练集图片个数
-predictImageCount 10000 # 测试集图片个数
+testImageCount 10000 # 测试集图片个数
+predictImageCount 10000 # 使用测试集中多少个图片进行预测
 predictOutputCount 20 # 输出前多少个测试集图片的预测结果
 studyRate 0.001 # 学习率 由于使用Adam算法请不要调整
 attenuationRate 1 # 衰减率 由于使用Adam算法请不要调整
@@ -122,6 +123,7 @@ printTrainProcess 1 # 是否在训练过程中输出当前训练结果
 printPredictOutput 1 # 是否输出在测试集上的预测结果
 printPredictAccuracyRate 1 # 是否输出在测试集上的正确率
 printModelSchema 0 # 是否输出模型的各层输入、输出形状
+lossCheckCount 3 # 检查多少个loss来判断是否提前退出，不少于2
 [model] # 模型，即各层参数，可调
 Input 28 28 # 输入层，必须是第一层，接受两个参数宽 高
 Convolution 20 5 1 0 # 卷积层 参数依次为 输出通道数 卷积核大小 步长 步长偏置=0 输出大小=自动

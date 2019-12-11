@@ -11,7 +11,7 @@ __global__ void layerDevPredictInput(layer_schema_t schema, unsigned char* input
     double* output = schema.predictOutput;
     int inputIndex = layerGetInputIndex(&schema, blockIdx.x, blockIdx.y, threadIdx.x, threadIdx.y);
     int outputIndex = layerGetCurrentOutputIndex(&schema);
-    output[outputIndex] = (input[inputIndex] + 1) / 256.0;
+    output[outputIndex] = (input[inputIndex]) / 255.0;
 }
 
 int layerPredictInput(layer_schema_t* schema, int batchSize, unsigned char* input) {

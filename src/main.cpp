@@ -32,7 +32,7 @@ int main(int argc, const char* argv[]) {
     }
 
     if (cli.version) {
-        printf("VERSION 1.0.1\n");
+        printf("VERSION 1.0.2\n");
         return 0;
     }
 
@@ -53,7 +53,9 @@ int main(int argc, const char* argv[]) {
 
     model.setStudyRate(config.studyRate);
     model.setAttenuationRate(config.attenuationRate);
-    model.setRoundCount(config.roundCount);
+    model.setEpoch(config.epoch);
+    model.setPrintTrainProcess(config.printTrainProcess);
+    model.setLossCheckCount(config.lossCheckCount);
 
     if (config.printModelSchema) {
         model.printSchema();
@@ -91,14 +93,14 @@ int main(int argc, const char* argv[]) {
     }
 
     if (cli.train) {
-        if (model.train(trainImageSet.images, trainLabelSet.labels, config.trainImageCount, config.printTrainProcess)) {
+        if (model.train(trainImageSet.images, trainLabelSet.labels, testImageSet.images, testLabelSet.labels)) {
             return -1;
         }
     }
 
     if (cli.predict) {
         unsigned char* output = new unsigned char[config.predictImageCount];
-        if (model.predict(testImageSet.images, output, config.predictImageCount)) {
+        if (model.predict(testImageSet.images, output)) {
             delete [] output;
             return -1;
         }
@@ -161,9 +163,10 @@ void initConfig(model_config_t* config, ModelFacadeBuilder* builder) {
     config->testLabel[0] = 0;
     config->loadPath[0] = 0;
     config->savePath[0] = 0;
-    config->memoryCount = 0;
     config->batchSize = 0;
     config->trainImageCount = 0;
+    config->testImageCount = 0;
+    config->predictImageCount = 0;
     config->studyRate = 0.001;
     config->attenuationRate = 1;
     config->printMemoryUsed = 1;
@@ -171,6 +174,7 @@ void initConfig(model_config_t* config, ModelFacadeBuilder* builder) {
     config->printPredictOutput = 1;
     config->printPredictAccuracyRate = 1;
     config->printModelSchema = 0;
+    config->lossCheckCount = 3;
 }
 
 int readConfig(model_config_t* config, const char* configPath) {
@@ -181,10 +185,10 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.expectString(MODULE_INPUT, "testLabel", config->testLabel);
     reader.expectString(MODULE_GLOBAL, "loadPath", config->loadPath);
     reader.expectString(MODULE_GLOBAL, "savePath", config->savePath);
-    reader.expectInteger(MODULE_GLOBAL, "roundCount", &(config->roundCount));
-    reader.expectInteger(MODULE_GLOBAL, "memoryCount", &(config->memoryCount));
+    reader.expectInteger(MODULE_GLOBAL, "epoch", &(config->epoch));
     reader.expectInteger(MODULE_GLOBAL, "batchSize", &(config->batchSize));
     reader.expectInteger(MODULE_GLOBAL, "trainImageCount", &(config->trainImageCount));
+    reader.expectInteger(MODULE_GLOBAL, "testImageCount", &(config->testImageCount));
     reader.expectInteger(MODULE_GLOBAL, "predictImageCount", &(config->predictImageCount));
     reader.expectInteger(MODULE_GLOBAL, "predictOutputCount", &(config->predictOutputCount));
     reader.expectDouble(MODULE_GLOBAL, "studyRate", &(config->studyRate));
@@ -194,6 +198,7 @@ int readConfig(model_config_t* config, const char* configPath) {
     reader.expectInteger(MODULE_GLOBAL, "printPredictOutput", &(config->printPredictOutput));
     reader.expectInteger(MODULE_GLOBAL, "printPredictAccuracyRate", &(config->printPredictAccuracyRate));
     reader.expectInteger(MODULE_GLOBAL, "printModelSchema", &(config->printModelSchema));
+    reader.expectInteger(MODULE_GLOBAL, "lossCheckCount", &(config->lossCheckCount));
     reader.beforeModule(&beforeModule);
     reader.expectLayer(MODULE_MODEL, "Input", &readLayer);
     reader.expectLayer(MODULE_MODEL, "Dense", &readLayer);
@@ -209,23 +214,17 @@ int readConfig(model_config_t* config, const char* configPath) {
 int beforeModule(void* dist, const char* module) {
     model_config_t* config = (model_config_t*) dist;
     if (strcmp(module, "model") == 0) {
-        if (config->memoryCount <= 0) {
-            fprintf(stderr, "内存分配个数必须为正数\n");
-            return 1;
+        int memoryCount = config->trainImageCount + config->testImageCount;
+        if (memoryCount < config->predictImageCount) memoryCount = config->predictImageCount;
+        if (memoryCount <= 0) {
+            fprintf(stdout, "没有训练或预测任务，程序退出\n");
+            return 0;
         }
         if (config->batchSize <= 0) {
             fprintf(stderr, "batchSize必须为正数\n");
             return 1;
         }
-        if (config->memoryCount < config->trainImageCount) {
-            fprintf(stderr, "内存分配个数必须大于等于训练图片个数\n");
-            return 1;
-        }
-        if (config->memoryCount < config->predictImageCount) {
-            fprintf(stderr, "内存分配个数必须大于等于预测图片个数\n");
-            return 1;
-        }
-        config->builder->setMemory(config->memoryCount, config->batchSize);
+        config->builder->setMemory(memoryCount, config->trainImageCount, config->testImageCount, config->predictImageCount, config->batchSize);
     }
     return 0;
 }

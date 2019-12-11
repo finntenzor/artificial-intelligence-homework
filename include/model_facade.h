@@ -9,7 +9,6 @@
 class ModelFacadeBuilder;
 
 class ModelFacade: protected model_schema_t {
-    int maxInputCount;
     double* hostWeights;
     double accuracyRate;
     int (*batchCallback)(model_schema_t* mem, int batchIndex, int step);
@@ -23,14 +22,16 @@ public:
     int getTotalMemoryUsed();
     int saveModel(const char* filepath);
     int loadModel(const char* filepath);
-    int predict(unsigned char* input, unsigned char* output, int totalCount = 0);
+    int predict(unsigned char* input, unsigned char* output);
     double getAccuracyRate();
-    int train(unsigned char* input, unsigned char* labels, int totalCount = 0, int printTrainProcess = 1);
+    int train(unsigned char* trainInput, unsigned char* trainLabels, unsigned char* testInput, unsigned char* testLabels);
     void setTrainListener(int (*trainListener)(model_schema_t* mem, int batchIndex, int step));
     layer_schema_t* layerAt(int index);
     void setStudyRate(double studyRate);
     void setAttenuationRate(double attenuationRate);
-    void setRoundCount(int roundCount);
+    void setEpoch(int epoch);
+    void setPrintTrainProcess(int printTrainProcess);
+    void setLossCheckCount(int lossCheckCount);
     void printSchema();
 };
 
